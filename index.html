@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enkät</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f5f3ee; --card:#fff; --ink:#1d1c1a; --muted:#6b675f; --line:#e4e0d7; --soft:#efece5;
+    --accent:#1f6f5c; --accent-hover:#185a4a; --accent-soft:#e1efea;
+    --danger:#b4372f; --danger-soft:#f8e6e4; --warn-bg:#fff6dc; --warn-line:#efdca3;
+    --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:680px;margin:0 auto;padding:24px 16px 120px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:16px}
+  @media (max-width:520px){.card{padding:18px}.wrap{padding:16px 12px 120px}}
+  h1{font-size:28px;line-height:1.2;margin:0 0 8px;letter-spacing:-.015em}
+  h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
+  .lead{color:var(--muted);margin:0;white-space:pre-wrap}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  .center{text-align:center}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .spacer{flex:1}
+
+  /* Formulär */
+  label.lbl{display:block;font-weight:600;font-size:14px;margin:0 0 6px}
+  input[type=text],input[type=email],input[type=password],textarea,select{
+    width:100%;font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:11px 12px;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+  select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{min-height:96px;resize:vertical}
+  .field{margin-top:16px}
+
+  .q{padding:22px 0 4px;border-top:1px solid var(--line);margin-top:20px}
+  .q-title{font-weight:600;margin-bottom:12px;white-space:pre-wrap}
+  .req{color:var(--danger);margin-left:3px}
+  .choice{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
+  .choice:hover{border-color:#cfc9bc}
+  .choice:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+  .choice input{accent-color:var(--accent);width:18px;height:18px;margin:0;flex:none}
+  .scale{display:flex;gap:8px}
+  .scale label{flex:1;position:relative}
+  .scale input{position:absolute;opacity:0;pointer-events:none}
+  .scale span{display:block;text-align:center;padding:12px 0;border:1px solid var(--line);border-radius:10px;font-weight:600;cursor:pointer;transition:all .15s}
+  .scale span:hover{border-color:#cfc9bc}
+  .scale input:checked + span{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .scale input:focus-visible + span{box-shadow:0 0 0 3px var(--accent-soft)}
+  .scale-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:6px;gap:12px}
+  .err{color:var(--danger);font-size:14px;margin-top:6px}
+  .has-err input[type=text],.has-err textarea,.has-err .choice,.has-err .scale span{border-color:var(--danger)}
+
+  /* Knappar */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:600;font-size:15px;border-radius:10px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);padding:10px 16px;cursor:pointer;transition:background .15s,border-color .15s,opacity .15s;text-decoration:none;white-space:nowrap}
+  .btn:hover{background:var(--soft)}
+  .btn:disabled{opacity:.55;cursor:default}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-hover)}
+  .btn.danger{color:var(--danger)}
+  .btn.danger:hover{background:var(--danger-soft);border-color:#ebc5c1}
+  .btn.danger.solid{background:var(--danger);border-color:var(--danger);color:#fff}
+  .btn.ghost{border-color:transparent;background:transparent}
+  .btn.ghost:hover{background:var(--soft)}
+  .btn.sm{font-size:14px;padding:7px 11px;border-radius:9px}
+  .btn.icon{padding:7px 9px;min-width:36px}
+  .btn.block{width:100%;padding:13px 16px;font-size:16px}
+  .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+  /* Banner, statusar */
+  .banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:14px}
+  .banner .row{gap:4px 12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:5px 10px;border-radius:99px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .pill i{width:8px;height:8px;border-radius:50%;background:#b9b3a6}
+  .pill.on i{background:#2f9e6b}
+  .notice{background:var(--soft);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--muted)}
+  .error-box{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:14px;margin-top:12px}
+  .spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 0.8s linear infinite;margin:0 auto 12px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .big-emoji{font-size:40px;line-height:1;margin-bottom:8px}
+
+  /* Admin */
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .topbar h1{font-size:22px;margin:0}
+  .tabs{display:flex;gap:4px;background:#e9e5db;padding:4px;border-radius:12px;margin-bottom:16px}
+  .tab{flex:1;border:0;background:transparent;font:inherit;font-weight:600;font-size:14px;color:var(--muted);padding:9px 6px;border-radius:9px;cursor:pointer}
+  .tab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:12px;line-height:20px;margin-left:4px}
+  .qedit-head{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+  .qnum{font-weight:700;color:var(--muted);font-size:14px}
+  .qedit-grid{display:grid;grid-template-columns:1fr 170px;gap:10px}
+  @media (max-width:520px){.qedit-grid{grid-template-columns:1fr}}
+  .opt-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+  .opt-row .dot{width:14px;height:14px;border:2px solid #c9c3b6;border-radius:50%;flex:none}
+  .opt-row .dot.sq{border-radius:4px}
+  .check{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
+  .check input{accent-color:var(--accent);width:17px;height:17px;margin:0}
+  .savebar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);
+    border-top:1px solid var(--line);backdrop-filter:blur(8px);z-index:20;transform:translateY(110%);transition:transform .2s}
+  .savebar.show{transform:none}
+  .savebar .inner{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:10px}
+
+  .stat{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .seg{display:inline-flex;background:#e9e5db;border-radius:10px;padding:3px}
+  .seg button{border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .bar-row{margin:10px 0}
+  .bar-top{display:flex;justify-content:space-between;gap:12px;font-size:14px;margin-bottom:4px}
+  .bar-top b{font-weight:600;white-space:nowrap}
+  .bar{height:10px;background:var(--soft);border-radius:99px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+  input[type=date]{width:100%;font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;min-height:46px}
+  input[type=date]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  details.mine summary{list-style:none;display:flex;align-items:center;gap:12px;cursor:pointer}
+  details.mine summary::-webkit-details-marker{display:none}
+  details.mine summary>div{flex:1}
+  details.mine .chev{font-size:22px;color:var(--muted);transition:transform .15s}
+  details.mine[open] .chev{transform:rotate(90deg)}
+  .txt-ans{border-left:3px solid var(--line);padding:4px 0 4px 12px;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+  .txt-ans .who{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  dl.resp{margin:12px 0 0}
+  dl.resp dt{font-size:13px;color:var(--muted);margin-top:10px}
+  dl.resp dd{margin:2px 0 0;white-space:pre-wrap;word-break:break-word}
+  .qr{display:flex;justify-content:center;padding:16px;background:#fff;border-radius:12px}
+  .qr img,.qr canvas{max-width:220px;height:auto}
+
+  /* Toast och dialog */
+  .toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);background:#1d1c1a;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;
+    opacity:0;transition:all .2s;z-index:60;pointer-events:none;max-width:calc(100% - 32px)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .modal-back{position:fixed;inset:0;background:rgba(20,18,15,.4);display:grid;place-items:center;padding:16px;z-index:50}
+  .modal{background:#fff;border-radius:16px;padding:22px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto}
+  .modal p{color:var(--muted);margin:8px 0 18px}
+  .nav{display:flex;gap:4px;background:#e9e5db;padding:4px;border-radius:12px;margin-bottom:16px;overflow-x:auto}
+  .nav a{flex:1;text-align:center;text-decoration:none;font-weight:600;font-size:14px;color:var(--muted);padding:9px 8px;border-radius:9px;white-space:nowrap}
+  .nav a.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .hello{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:14px;color:var(--muted)}
+  .tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--soft);color:var(--muted);vertical-align:middle}
+  .tag.admin{background:var(--accent-soft);color:var(--accent)}
+  .tag.blocked{background:var(--danger-soft);color:var(--danger)}
+  .auth-tabs{margin:-4px 0 18px}
+  .acc-row{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .acc-row .who{flex:1;min-width:160px}
+  .acc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .pw-wrap{position:relative}
+  .pw-wrap input{padding-right:72px}
+  .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;
+    color:var(--accent);padding:6px 10px;border-radius:8px;cursor:pointer}
+  .pw-toggle:hover{background:var(--soft)}
+  .admin-block{border-top:2px dashed var(--line);margin-top:8px;padding-top:16px}
+</style>
+</head>
+<body>
+
+<script>
+/* =====================================================================
+   INSTÄLLNINGAR  (se README.md)
+
+   1) FIREBASE_CONFIG: klistra in konfigurationen från Firebase (steg 3).
+      Så länge den är null körs sidan i DEMOLÄGE: allt sparas bara
+      i din egen webbläsare. Logga in som  admin / admin  för att testa.
+
+   2) ADMIN_USERNAMES: admin-kontot (det enda kontot som kan se allas svar
+      och administrera konton). Måste vara samma som i firestore.rules.
+      Dela inloggningen till det kontot med dem som ska vara admin.
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAASlrMMW_RwjvA-qDBNMsZ1pfAqXhhdoU",
+  authDomain: "konfa-gudstjanst-anteckningar.firebaseapp.com",
+  projectId: "konfa-gudstjanst-anteckningar",
+  storageBucket: "konfa-gudstjanst-anteckningar.firebasestorage.app",
+  messagingSenderId: "791195127855",
+  appId: "1:791195127855:web:ee3fc67b108d2c2a8236da"
+};
+
+const ADMIN_USERNAMES = ['admin'];
+
+/* 3) PASSWORD_PATTERN: lösenordet som nya konton får. {förnamn} byts mot
+      personens förnamn, t.ex. Elin Svensson → JesusÄlskar.Elin
+      (Du kan alltid skriva ett annat lösenord när du skapar kontot.) */
+const PASSWORD_PATTERN = 'JesusÄlskar.{förnamn}';
+</script>
+
+<div id="app"></div>
+
+<script type="module">
+/* ---------------- Hjälpfunktioner ---------------- */
+const USER_DOMAIN = 'enkat.example.com'; // används bara internt (användarnamn → inloggning). Måste matcha firestore.rules.
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,19}$/;
+const $app = document.getElementById('app');
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtTime = d => d ? new Intl.DateTimeFormat('sv-SE', { dateStyle: 'short', timeStyle: 'short' }).format(d) : '';
+const fmtNum = n => new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 1 }).format(n);
+const todayIso = () => new Date().toLocaleDateString('sv-SE');
+const fmtDay = v => { const d = new Date(String(v) + 'T12:00'); return isNaN(d) ? String(v) : new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' }).format(d); };
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  let deferredValue;
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (k === 'value') deferredValue = v;
+    else if (k === 'checked' || k === 'disabled' || k === 'selected') el[k] = !!v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false) continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  if (deferredValue !== undefined) el.value = deferredValue;
+  return el;
+}
+function setPage(...nodes) {
+  $app.replaceChildren(h('div', { class: 'wrap' }, demoBanner(), userNav(), ...nodes));
+  window.scrollTo(0, 0);
+}
+function withTimeout(p, ms = 10000) {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+const ls = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+let toastTimer;
+function toast(msg) {
+  let t = document.querySelector('.toast');
+  if (!t) { t = h('div', { class: 'toast', role: 'status' }); document.body.append(t); }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function confirmDialog(title, text, okLabel = 'OK', danger = false) {
+  return new Promise(resolve => {
+    const close = v => { back.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') close(false); };
+    const back = h('div', { class: 'modal-back', onclick: e => { if (e.target === back) close(false); } },
+      h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
+        h('h2', {}, title), h('p', {}, text),
+        h('div', { class: 'row', style: 'justify-content:flex-end' },
+          h('button', { class: 'btn', onclick: () => close(false) }, 'Avbryt'),
+          h('button', { class: 'btn ' + (danger ? 'danger solid' : 'primary'), onclick: () => close(true) }, okLabel))));
+    document.addEventListener('keydown', onKey);
+    document.body.append(back);
+    back.querySelector('.btn:last-child').focus();
+  });
+}
+function pwField(input) {
+  const btn = h('button', { type: 'button', class: 'pw-toggle', 'aria-label': 'Visa lösenord', 'aria-pressed': 'false' }, 'Visa');
+  btn.addEventListener('click', () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? 'Dölj' : 'Visa';
+    btn.setAttribute('aria-label', show ? 'Dölj lösenord' : 'Visa lösenord');
+    btn.setAttribute('aria-pressed', String(show));
+    input.focus();
+  });
+  return h('div', { class: 'pw-wrap' }, input, btn);
+}
+const loadingCard = text => h('div', { class: 'card center' }, h('div', { class: 'spin' }), h('div', { class: 'muted' }, text));
+const msgCard = (emoji, title, text, ...extra) => h('div', { class: 'card center' },
+  h('div', { class: 'big-emoji' }, emoji), h('h1', { style: 'font-size:22px' }, title), text && h('p', { class: 'lead' }, text), ...extra);
+
+const TYPES = { short: 'Kort text', long: 'Lång text', date: 'Datum', single: 'Ett val', multi: 'Flera val', scale: 'Skala 1–5' };
+const isChoice = t => t === 'single' || t === 'multi';
+const isEmpty = v => v == null || v === '' || (Array.isArray(v) && v.length === 0);
+const fmtAnswer = (type, v) => Array.isArray(v) ? v.join(', ') : type === 'date' ? fmtDay(v) : String(v);
+
+function normalizeQuestion(q) {
+  q = q && typeof q === 'object' ? q : {};
+  return {
+    id: String(q.id || uid()),
+    type: TYPES[q.type] ? q.type : 'short',
+    text: String(q.text || ''),
+    required: !!q.required,
+    options: Array.isArray(q.options) ? q.options.map(String) : [],
+    minLabel: String(q.minLabel || ''),
+    maxLabel: String(q.maxLabel || ''),
+  };
+}
+function normalizeSurvey(s) {
+  s = s && typeof s === 'object' ? s : {};
+  return {
+    sid: String(s.sid || uid()),
+    title: String(s.title || ''),
+    description: String(s.description || ''),
+    open: s.open !== false,
+    questions: (Array.isArray(s.questions) ? s.questions : []).map(normalizeQuestion),
+  };
+}
+function newQuestion(type = 'short') {
+  return { id: uid(), type, text: '', required: false, options: isChoice(type) ? ['', ''] : [], minLabel: '', maxLabel: '' };
+}
+function churchTemplate() {
+  return {
+    title: 'Mina gudstjänstanteckningar',
+    description: 'Fyll i under eller efter gudstjänsten. Allt sparas på ditt konto, så du kan läsa det igen under "Mina svar".',
+    open: true,
+    questions: [
+      { id: 'datum', type: 'date', text: 'Datum' },
+      { id: 'plats', type: 'short', text: 'Plats' },
+      { id: 'predikan', type: 'long', text: 'Detta kommer jag ihåg från predikan' },
+      { id: 'lovsang', type: 'short', text: 'Denna lovsång gillade jag mest' },
+      { id: 'jesus', type: 'long', text: 'Detta lärde jag mig om Jesus' },
+      { id: 'basta', type: 'long', text: 'Det bästa med gudstjänsten' },
+      { id: 'undrar', type: 'long', text: 'Detta undrar jag över' },
+    ],
+  };
+}
+const newSurvey = () => normalizeSurvey(churchTemplate());
+const authError = e => {
+  const c = e?.code || e?.message || '';
+  if (/email-already-in-use|username-taken/.test(c)) return 'Användarnamnet är upptaget. Välj ett annat.';
+  if (/weak-password/.test(c)) return 'Lösenordet måste ha minst 6 tecken.';
+  if (/invalid-credential|wrong-password|user-not-found|invalid-email|invalid-login/.test(c)) return 'Fel användarnamn eller lösenord.';
+  if (/too-many-requests/.test(c)) return 'För många försök. Vänta en stund och försök igen.';
+  if (/operation-not-allowed/.test(c)) return 'Inloggning med e-post/lösenord är inte aktiverad i Firebase (README, steg 2).';
+  if (/network|timeout/.test(c)) return 'Ingen kontakt med servern. Kontrollera internetanslutningen.';
+  if (/api-key|invalid-api|configuration-not-found|project-not-found/.test(c)) return 'Firebase-inställningarna verkar fel. Kontrollera FIREBASE_CONFIG i index.html (README, steg 3).';
+  return 'Något gick fel. Försök igen.';
+};
+const isRootAdmin = u => ADMIN_USERNAMES.map(s => s.toLowerCase()).includes(u) || (backend?.demo && u === 'admin');
+
+/* =====================================================================
+   BACKEND: DEMOLÄGE (allt i webbläsaren, bara för att testa)
+   ===================================================================== */
+function demoBackend() {
+  const K = { s: 'enkat-demo5-survey', r: 'enkat-demo5-responses', u: 'enkat-demo5-users', a: 'enkat-demo5-admins', me: 'enkat-demo5-session' };
+  const mem = {};
+  const read = (k, d) => { try { const v = ls.get(k) ?? mem[k]; return v == null ? d : JSON.parse(v); } catch { return d; } };
+  const write = (k, v) => { const s = JSON.stringify(v); mem[k] = s; ls.set(k, s); };
+  const subs = { r: new Set(), u: new Set(), a: new Set(), auth: new Set() };
+  const fail = code => Object.assign(new Error(code), { code });
+  const resp = () => read(K.r, []).map(x => ({ ...x, createdAt: new Date(x.createdAt), updatedAt: x.updatedAt ? new Date(x.updatedAt) : null }));
+  const users = () => Object.entries(read(K.u, {})).map(([username, x]) => ({ username, name: x.name, disabled: !!x.disabled, createdAt: new Date(x.createdAt) }));
+  const emit = () => { subs.r.forEach(f => f()); subs.u.forEach(f => f()); subs.a.forEach(f => f()); };
+  const session = () => read(K.me, null);
+  const active = () => { const me = session(); const u = me && read(K.u, {})[me]; if (!u || u.disabled) throw fail('permission-denied'); return me; };
+  const admin = () => { const me = session(); if (!me || !isRootAdmin(me)) throw fail('permission-denied'); };
+
+  function seed() {
+    const s = normalizeSurvey(churchTemplate());
+    const now = Date.now(), day = 864e5;
+    const d = n => new Date(now - n * day).toLocaleDateString('sv-SE');
+    write(K.s, s);
+    write(K.u, {
+      admin: { name: 'Admin', pw: 'admin', createdAt: new Date(now - 30 * day).toISOString() },
+      elin: { name: 'Elin', pw: 'JesusÄlskar.Elin', createdAt: new Date(now - 20 * day).toISOString() },
+      jonatan: { name: 'Jonatan', pw: 'JesusÄlskar.Jonatan', createdAt: new Date(now - 10 * day).toISOString() },
+    });
+    write(K.a, []);
+    const f = s.questions;
+    write(K.r, [
+      { id: uid(), username: 'elin', fragor: f, answers: { datum: d(7), plats: 'Kyrkan', predikan: 'Att Gud inte ger upp om oss, som herden som letar efter det borttappade fåret.', lovsang: 'Så stor är du', jesus: 'Han lämnar de 99 för att hitta den enda.', basta: 'Gemenskapen efteråt', undrar: 'Hur vet man att Gud hör när man ber?' }, createdAt: new Date(now - 7 * day + 3600e3).toISOString() },
+      { id: uid(), username: 'jonatan', fragor: f, answers: { datum: d(7), plats: 'Kyrkan', predikan: 'Liknelsen om det förlorade fåret', lovsang: 'Oceans', basta: 'Musiken' }, createdAt: new Date(now - 7 * day + 7200e3).toISOString() },
+      { id: uid(), username: 'elin', fragor: f, answers: { datum: d(0), plats: 'Ungdomsgudstjänst', predikan: 'Om att vara ljus i världen.', lovsang: 'Way Maker', jesus: 'Han är världens ljus.' }, createdAt: new Date(now - 3 * 3600e3).toISOString() },
+    ]);
+  }
+  if (read(K.s, null) == null) seed();
+  addEventListener('storage', e => { if (Object.values(K).includes(e.key)) { emit(); if (e.key === K.me) subs.auth.forEach(f => f()); } });
+  const authEmit = () => subs.auth.forEach(f => f());
+
+  return {
+    demo: true,
+    onAuth(cb) { const f = () => { const me = session(); cb(me ? { username: me } : null); }; subs.auth.add(f); setTimeout(f); return () => subs.auth.delete(f); },
+    async login(username, pw) { const u = read(K.u, {})[username]; if (!u || u.pw !== pw) throw fail('invalid-credential'); write(K.me, username); authEmit(); },
+    async logout() { write(K.me, null); authEmit(); },
+    async changePassword(oldPw, newPw) {
+      const me = session(), all = read(K.u, {});
+      if (all[me].pw !== oldPw) throw fail('invalid-credential');
+      if (newPw.length < 6) throw fail('weak-password');
+      all[me].pw = newPw; write(K.u, all); emit();
+    },
+    async ensureProfile(username) {
+      const u = read(K.u, {})[username];
+      return u ? { username, name: u.name || '', disabled: !!u.disabled } : null;
+    },
+    async updateName(username, name) {
+      if (username !== session()) admin(); else active();
+      const all = read(K.u, {}); all[username].name = name; write(K.u, all); emit();
+    },
+
+    async getSurvey() { return read(K.s, null); },
+    async saveSurvey(s) { admin(); write(K.s, s); },
+
+    watchMine(username, cb) { const f = () => cb(resp().filter(r => r.username === username)); subs.r.add(f); setTimeout(f); return () => subs.r.delete(f); },
+    async addResponse(username, answers, fragor) {
+      if (active() !== username) throw fail('permission-denied');
+      if (read(K.s, {}).open === false) throw fail('permission-denied');
+      const all = read(K.r, []); const t = new Date().toISOString();
+      all.push({ id: uid(), username, answers, fragor, createdAt: t, updatedAt: t }); write(K.r, all); emit();
+    },
+    async updateResponse(id, answers) {
+      const me = active(); const all = read(K.r, []); const r = all.find(x => x.id === id);
+      if (!r || r.username !== me) throw fail('permission-denied');
+      r.answers = answers; r.updatedAt = new Date().toISOString(); write(K.r, all); emit();
+    },
+    async deleteResponse(id) { const me = session(); const all = read(K.r, []); const r = all.find(x => x.id === id);
+      if (r && r.username !== me) admin(); write(K.r, all.filter(x => x.id !== id)); emit(); },
+
+    // --- admin ---
+    watchAll(cb) { const f = () => cb(resp().sort((a, b) => b.createdAt - a.createdAt)); subs.r.add(f); setTimeout(f); return () => subs.r.delete(f); },
+    watchUsers(cb) { const f = () => cb(users()); subs.u.add(f); setTimeout(f); return () => subs.u.delete(f); },
+    watchCredentials(cb) {
+      const f = () => cb(Object.fromEntries(Object.entries(read(K.u, {})).filter(([u]) => !isRootAdmin(u)).map(([u, x]) => [u, x.pw])));
+      subs.u.add(f); setTimeout(f); return () => subs.u.delete(f);
+    },
+    async createAccount(username, name, pw) {
+      admin(); const all = read(K.u, {});
+      if (all[username]) throw fail('email-already-in-use');
+      if (pw.length < 6) throw fail('weak-password');
+      all[username] = { name, pw, createdAt: new Date().toISOString() }; write(K.u, all); emit();
+    },
+    async setPassword(username, oldPw, newPw) {
+      admin(); const all = read(K.u, {});
+      if (newPw.length < 6) throw fail('weak-password');
+      all[username].pw = newPw; write(K.u, all); emit();
+    },
+    async deleteAccount(username) {
+      admin();
+      const all = read(K.u, {}); delete all[username]; write(K.u, all);
+      write(K.r, read(K.r, []).filter(x => x.username !== username));
+      write(K.a, read(K.a, []).filter(x => x !== username)); emit();
+      return true;
+    },
+    async setDisabled(username, on) { admin(); const all = read(K.u, {}); all[username].disabled = on; write(K.u, all); emit(); },
+    async deleteResponses(ids) { admin(); const s = new Set(ids); write(K.r, read(K.r, []).filter(x => !s.has(x.id))); emit(); },
+    reset() { seed(); write(K.me, null); emit(); authEmit(); },
+  };
+}
+
+/* =====================================================================
+   BACKEND: FIREBASE (riktig databas)
+   ===================================================================== */
+async function firebaseBackend(cfg) {
+  const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  const [{ initializeApp }, F, A] = await withTimeout(Promise.all([
+    import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js'), import(base + 'firebase-auth.js'),
+  ]), 15000);
+  const app = initializeApp(cfg);
+  const db = F.getFirestore(app);
+  const auth = A.getAuth(app);
+  // En separat "hjälp-inloggning" som admin använder för att skapa konton och byta lösenord
+  // utan att själv bli utloggad.
+  let helperAuth = null;
+  const helper = () => helperAuth || (helperAuth = A.initializeAuth(initializeApp(cfg, 'admin-helper'), { persistence: A.inMemoryPersistence }));
+  const emailOf = u => `${u}@${USER_DOMAIN}`;
+  const userOf = e => String(e || '').split('@')[0].toLowerCase();
+  const surveyRef = F.doc(db, 'surveys', 'main');
+  const respCol = F.collection(db, 'responses');
+  const ts = () => F.serverTimestamp();
+  const toResp = d => { const x = d.data(); return { ...x, id: d.id, createdAt: x.createdAt?.toDate?.() || new Date(), updatedAt: x.updatedAt?.toDate?.() || null }; };
+  return {
+    demo: false,
+    onAuth(cb) { return A.onAuthStateChanged(auth, u => cb(u ? { username: userOf(u.email) } : null)); },
+    async login(username, pw) { await A.signInWithEmailAndPassword(auth, emailOf(username), pw); },
+    async logout() { await A.signOut(auth); },
+    async changePassword(oldPw, newPw) {
+      const u = auth.currentUser;
+      await A.reauthenticateWithCredential(u, A.EmailAuthProvider.credential(u.email, oldPw));
+      await A.updatePassword(u, newPw);
+      try { // håll den sparade kopian (om den finns) uppdaterad
+        const ref = F.doc(db, 'credentials', userOf(u.email));
+        if ((await F.getDoc(ref)).exists()) await F.setDoc(ref, { password: newPw, updatedAt: ts() });
+      } catch {}
+    },
+    async ensureProfile(username) {
+      const ref = F.doc(db, 'users', username);
+      const snap = await F.getDoc(ref);
+      if (snap.exists()) { const x = snap.data(); return { username, name: x.name || '', disabled: !!x.disabled }; }
+      if (!isRootAdmin(username)) return null;
+      await F.setDoc(ref, { username, name: '', disabled: false, createdAt: ts() });
+      return { username, name: '', disabled: false };
+    },
+    async updateName(username, name) { await F.updateDoc(F.doc(db, 'users', username), { name }); },
+
+    async getSurvey() { const s = await F.getDoc(surveyRef); return s.exists() ? s.data() : null; },
+    async saveSurvey(s) { await F.setDoc(surveyRef, s); },
+
+    watchMine(username, cb, err) {
+      return F.onSnapshot(F.query(respCol, F.where('username', '==', username)), snap => cb(snap.docs.map(toResp)), err);
+    },
+    async addResponse(username, answers, fragor) {
+      await F.addDoc(respCol, { username, answers, fragor, createdAt: ts(), updatedAt: ts() });
+    },
+    async updateResponse(id, answers) { await F.updateDoc(F.doc(db, 'responses', id), { answers, updatedAt: ts() }); },
+    async deleteResponse(id) { await F.deleteDoc(F.doc(db, 'responses', id)); },
+
+    // --- admin ---
+    watchAll(cb, err) { return F.onSnapshot(F.query(respCol, F.orderBy('createdAt', 'desc')), snap => cb(snap.docs.map(toResp)), err); },
+    watchUsers(cb, err) {
+      return F.onSnapshot(F.collection(db, 'users'), snap => cb(snap.docs.map(d => { const x = d.data(); return { username: d.id, name: x.name || '', disabled: !!x.disabled, createdAt: x.createdAt?.toDate?.() || null }; })), err);
+    },
+    watchCredentials(cb, err) { return F.onSnapshot(F.collection(db, 'credentials'), snap => cb(Object.fromEntries(snap.docs.map(d => [d.id, d.data().password || '']))), err); },
+    async createAccount(username, name, pw) {
+      const h = helper();
+      const c = await A.createUserWithEmailAndPassword(h, emailOf(username), pw);
+      try {
+        await F.setDoc(F.doc(db, 'credentials', username), { password: pw, updatedAt: ts() });
+        await F.setDoc(F.doc(db, 'users', username), { username, name, disabled: false, createdAt: ts() });
+      } catch (e) {
+        // Ångra inloggningen så att användarnamnet inte blir "upptaget" av ett halvfärdigt konto
+        try { await A.deleteUser(c.user); } catch {}
+        try { await F.deleteDoc(F.doc(db, 'credentials', username)); } catch {}
+        throw e;
+      } finally {
+        try { await A.signOut(h); } catch {}
+      }
+    },
+    async setPassword(username, oldPw, newPw) {
+      if (!oldPw) throw Object.assign(new Error('no-stored-password'), { code: 'no-stored-password' });
+      const h = helper();
+      const c = await A.signInWithEmailAndPassword(h, emailOf(username), oldPw);
+      await A.updatePassword(c.user, newPw);
+      await A.signOut(h);
+      await F.setDoc(F.doc(db, 'credentials', username), { password: newPw, updatedAt: ts() });
+    },
+    async deleteAccount(username, pw, responseIds) {
+      let authDeleted = false;
+      if (pw) {
+        try { const h = helper(); const c = await A.signInWithEmailAndPassword(h, emailOf(username), pw); await A.deleteUser(c.user); authDeleted = true; }
+        catch (e) { console.warn('Kunde inte radera inloggningen', e); }
+      }
+      const refs = [...responseIds.map(id => F.doc(db, 'responses', id)),
+        F.doc(db, 'credentials', username), F.doc(db, 'users', username)];
+      for (let i = 0; i < refs.length; i += 400) {
+        const b = F.writeBatch(db); refs.slice(i, i + 400).forEach(r => b.delete(r)); await b.commit();
+      }
+      return authDeleted;
+    },
+    async setDisabled(username, on) { await F.updateDoc(F.doc(db, 'users', username), { disabled: on }); },
+    async deleteResponses(ids) {
+      for (let i = 0; i < ids.length; i += 400) {
+        const b = F.writeBatch(db);
+        ids.slice(i, i + 400).forEach(id => b.delete(F.doc(db, 'responses', id)));
+        await b.commit();
+      }
+    },
+  };
+}
+
+/* =====================================================================
+   APPENS TILLSTÅND OCH NAVIGERING
+   ===================================================================== */
+let backend = null;
+const S = {
+  ready: false,
+  user: null,          // { username, name, disabled }
+  admin: false,
+  mine: [], mineLoaded: false, mineErr: null,
+  editing: null,       // svar som redigeras
+};
+let routeCleanups = [], sessionCleanups = [], routeToken = 0;
+const runAll = arr => { arr.forEach(f => { try { f(); } catch {} }); arr.length = 0; };
+const page = () => (location.hash || '#').replace(/^#/, '') || 'start';
+
+function demoBanner() {
+  if (!backend?.demo) return null;
+  return h('div', { class: 'banner' },
+    h('div', { class: 'row' },
+      h('b', {}, 'Demoläge'),
+      h('span', { class: 'muted' }, 'Allt sparas bara i den här webbläsaren. Logga in som ', h('b', {}, 'admin / admin'), ' eller ', h('b', {}, 'elin / JesusÄlskar.Elin'), '.'),
+      h('span', { class: 'spacer' }),
+      h('button', { class: 'linkbtn', onclick: async () => {
+        if (await confirmDialog('Återställa demot?', 'Exempelkonton, frågor och svar läggs tillbaka och du loggas ut.', 'Återställ')) { backend.reset(); location.hash = ''; }
+      } }, 'Återställ demo')));
+}
+function userNav() {
+  if (!S.user || S.user.disabled) return null;
+  const p = page();
+  const link = (hash, label, key) => h('a', { href: hash, class: p === key ? 'on' : '',
+    onclick: () => { if (key === 'start' && p === 'start' && S.editing) { S.editing = null; route(); } } }, label);
+  return [
+    h('div', { class: 'hello' }, 'Inloggad som ', h('b', { style: 'color:var(--ink)' }, S.user.name || S.user.username),
+      S.admin && h('span', { class: 'tag admin' }, 'Admin')),
+    h('nav', { class: 'nav' },
+      link('#', 'Nytt svar', 'start'),
+      link('#mina', 'Mina svar', 'mina'),
+      S.admin && link('#admin', 'Admin', 'admin'),
+      link('#konto', 'Konto', 'konto')),
+  ];
+}
+
+async function boot() {
+  $app.replaceChildren(h('div', { class: 'wrap' }, loadingCard('Laddar…')));
+  try {
+    backend = FIREBASE_CONFIG ? await firebaseBackend(FIREBASE_CONFIG) : demoBackend();
+  } catch (e) {
+    console.error(e);
+    setPage(msgCard('⚠️', 'Kunde inte ansluta', 'Firebase gick inte att ladda. Kontrollera internetanslutningen och att FIREBASE_CONFIG i index.html är rätt ifylld.'));
+    return;
+  }
+  addEventListener('hashchange', route);
+  let last;
+  backend.onAuth(async u => {
+    const key = u ? u.username : null;
+    if (key === last && S.ready) return;
+    last = key;
+    runAll(sessionCleanups);
+    S.user = null; S.admin = false; S.mine = []; S.mineLoaded = false; S.mineErr = null; S.editing = null;
+    if (u) {
+      setPage(loadingCard('Loggar in…'));
+      try {
+        const prof = await withTimeout(backend.ensureProfile(u.username));
+        if (last !== key) return;
+        S.user = prof || { username: u.username, name: '', disabled: true, missing: true };
+        S.admin = !S.user.disabled && isRootAdmin(u.username);
+      } catch (e) {
+        console.error(e);
+        setPage(msgCard('📡', 'Kunde inte logga in', e?.code === 'permission-denied'
+            ? 'Databasen nekade åtkomst. Kontrollera att firestore.rules är publicerade och att admin-namnet stämmer (README, steg 4).'
+            : 'Kontrollera internetanslutningen och ladda om sidan.',
+          h('button', { class: 'btn', style: 'margin-top:16px', onclick: logout }, 'Logga ut')));
+        return;
+      }
+      if (!S.user.disabled) {
+        const off = backend.watchMine(u.username, list => {
+          S.mine = list.sort((a, b) => b.createdAt - a.createdAt); S.mineLoaded = true; S.mineErr = null;
+          if (page() === 'mina') showMine();
+        }, err => { console.error(err); S.mineErr = err; S.mineLoaded = true; if (page() === 'mina') showMine(); });
+        sessionCleanups.push(off);
+      }
+    }
+    S.ready = true;
+    route();
+  });
+}
+
+function logout() {
+  // Börja om på startsidan nästa gång någon loggar in på den här enheten
+  try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+  backend.logout();
+}
+
+function route() {
+  if (!S.ready) return;
+  runAll(routeCleanups);
+  routeToken++;
+  const p = page();
+  if (p !== 'start') S.editing = null;
+  if (!S.user) { showAuth(); return; }
+  if (S.user.disabled) { showBlocked(); return; }
+  if (p === 'mina') showMine();
+  else if (p === 'konto') showAccount();
+  else if (p === 'admin' && S.admin) showAdmin();
+  else showForm();
+}
+
+/* =====================================================================
+   INLOGGNING OCH REGISTRERING
+   ===================================================================== */
+function showAuth() {
+  document.title = 'Logga in';
+  const user = h('input', { type: 'text', id: 'a_user', autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', maxlength: 20 });
+  const pw = h('input', { type: 'password', id: 'a_pw', autocomplete: 'current-password' });
+  const err = h('div', { class: 'error-box', hidden: true });
+  const btn = h('button', { class: 'btn primary block', type: 'submit' }, 'Logga in');
+  const showErr = t => { err.textContent = t; err.hidden = false; };
+  const form = h('form', { class: 'card', style: 'max-width:440px;margin:24px auto', novalidate: true, onsubmit: async e => {
+    e.preventDefault(); err.hidden = true;
+    const u = user.value.trim().toLowerCase();
+    if (!u || !pw.value) return showErr('Skriv användarnamn och lösenord.');
+    if (!USERNAME_RE.test(u)) return showErr('Fel användarnamn eller lösenord.');
+    btn.disabled = true; btn.textContent = 'Loggar in…';
+    try { await withTimeout(backend.login(u, pw.value), 15000); }
+    catch (ex) { console.error(ex); btn.disabled = false; btn.textContent = 'Logga in'; showErr(authError(ex)); }
+  } },
+    h('h1', { style: 'font-size:24px' }, 'Logga in'),
+    h('p', { class: 'lead' }, 'Logga in för att skriva och läsa dina anteckningar.'),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'a_user' }, 'Användarnamn'), user),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'a_pw' }, 'Lösenord'), pwField(pw)),
+    h('div', { style: 'margin-top:22px' }, btn, err),
+    h('p', { class: 'center small muted', style: 'margin:18px 0 0' }, 'Inget konto, eller glömt lösenordet? Fråga den som ansvarar för sidan.'));
+  setPage(form);
+  user.focus();
+}
+
+function showBlocked() {
+  setPage(msgCard('🚫', S.user.missing ? 'Kontot finns inte' : 'Kontot är spärrat',
+    S.user.missing ? `Kontot @${S.user.username} är inte aktivt. Fråga den som ansvarar för sidan.` : `Kontot @${S.user.username} har spärrats av en administratör. Kontakta den som ansvarar för sidan.`,
+    h('button', { class: 'btn', style: 'margin-top:16px', onclick: logout }, 'Logga ut')));
+}
+
+/* =====================================================================
+   FORMULÄRET (nytt svar eller redigera)
+   ===================================================================== */
+function questionInput(q) {
+  const name = 'q_' + q.id;
+  let get, input, set = () => {};
+  if (q.type === 'date') {
+    input = h('input', { type: 'date', id: name, value: todayIso(), 'aria-labelledby': name + '_t' });
+    get = () => input.value; set = v => { input.value = v || ''; };
+  } else if (q.type === 'short') {
+    input = h('input', { type: 'text', maxlength: 500, id: name, 'aria-labelledby': name + '_t' });
+    get = () => input.value.trim(); set = v => { input.value = v || ''; };
+  } else if (q.type === 'long') {
+    input = h('textarea', { maxlength: 5000, id: name, 'aria-labelledby': name + '_t' });
+    get = () => input.value.trim(); set = v => { input.value = v || ''; };
+  } else if (isChoice(q.type)) {
+    const t = q.type === 'single' ? 'radio' : 'checkbox';
+    input = h('div', { role: q.type === 'single' ? 'radiogroup' : 'group', 'aria-labelledby': name + '_t' },
+      q.options.filter(Boolean).map(o => h('label', { class: 'choice' }, h('input', { type: t, name, value: o }), h('span', {}, o))));
+    get = () => { const vals = [...input.querySelectorAll('input:checked')].map(i => i.value); return q.type === 'single' ? (vals[0] || '') : vals; };
+    set = v => { const vs = (Array.isArray(v) ? v : [v]).map(String); input.querySelectorAll('input').forEach(i => { i.checked = vs.includes(i.value); }); };
+  } else {
+    input = h('div', {},
+      h('div', { class: 'scale', role: 'radiogroup', 'aria-labelledby': name + '_t' },
+        [1, 2, 3, 4, 5].map(n => h('label', {}, h('input', { type: 'radio', name, value: n }), h('span', {}, n)))),
+      (q.minLabel || q.maxLabel) && h('div', { class: 'scale-labels' }, h('span', {}, q.minLabel), h('span', {}, q.maxLabel)));
+    get = () => { const c = input.querySelector('input:checked'); return c ? Number(c.value) : null; };
+    set = v => { input.querySelectorAll('input').forEach(i => { i.checked = String(i.value) === String(v); }); };
+  }
+  return { input, get, set };
+}
+
+async function showForm() {
+  const tok = routeToken;
+  const editing = S.editing;
+  document.title = editing ? 'Redigera svar' : 'Nytt svar';
+  let survey;
+  if (editing) {
+    survey = { title: 'Redigera svar', description: `Sparat ${fmtTime(editing.createdAt)}`, questions: (editing.fragor || []).map(normalizeQuestion), open: true, sid: 'edit' };
+    if (!survey.questions.length) { const cur = await backend.getSurvey().catch(() => null); survey.questions = normalizeSurvey(cur).questions; }
+  } else {
+    setPage(loadingCard('Laddar formuläret…'));
+    try { survey = await withTimeout(backend.getSurvey()); }
+    catch (e) { console.error(e); if (tok === routeToken) setPage(msgCard('📡', 'Kunde inte ladda', 'Kontrollera internetanslutningen och ladda om sidan.')); return; }
+    if (tok !== routeToken) return;
+    if (!survey) { setPage(msgCard('📝', 'Inga frågor än', S.admin ? 'Skapa frågorna under Admin.' : 'Här kommer det snart frågor att svara på.')); return; }
+    survey = normalizeSurvey(survey);
+    if (!survey.open) { setPage(msgCard('🔒', 'Formuläret är stängt', 'Det går inte att skicka nya svar just nu. Du kan fortfarande läsa dina tidigare svar under Mina svar.')); return; }
+  }
+  if (tok !== routeToken) return;
+
+  const draftKey = `enkat-utkast-${S.user.username}-${survey.sid}`;
+  const blocks = survey.questions.map((q, i) => {
+    const { input, get, set } = questionInput(q);
+    const err = h('div', { class: 'err', hidden: true });
+    const el = h('div', { class: 'q' },
+      h('div', { class: 'q-title', id: 'q_' + q.id + '_t' }, `${i + 1}. ${q.text}`, q.required && h('span', { class: 'req', title: 'Obligatorisk' }, '*')),
+      input, err);
+    return { q, get, set, el, err };
+  });
+  const formErr = h('div', { class: 'error-box', hidden: true });
+  const label = editing ? 'Spara ändringar' : 'Spara svar';
+  const btn = h('button', { class: 'btn primary block', type: 'submit' }, label);
+  let draftTimer;
+  const saveDraft = () => {
+    if (editing) return;
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+      const d = {}; blocks.forEach(b => { const v = b.get(); if (!isEmpty(v)) d[b.q.id] = v; });
+      ls.set(draftKey, JSON.stringify(d));
+    }, 400);
+  };
+  const form = h('form', { class: 'card', novalidate: true, onsubmit: submit, oninput: saveDraft, onchange: saveDraft },
+    h('h1', {}, survey.title || 'Formulär'),
+    survey.description && h('p', { class: 'lead' }, survey.description),
+    blocks.map(b => b.el),
+    h('div', { style: 'margin-top:24px' }, btn, formErr,
+      editing ? h('button', { type: 'button', class: 'btn ghost block', style: 'margin-top:8px', onclick: () => { S.editing = null; location.hash = '#mina'; } }, 'Avbryt')
+        : h('p', { class: 'small muted center', style: 'margin:10px 0 0' }, 'Det du skriver sparas som utkast på den här enheten tills du sparar.')),
+    blocks.some(b => b.q.required) && h('p', { class: 'small muted center', style: 'margin:12px 0 0' }, h('span', { class: 'req' }, '*'), ' = måste besvaras'));
+  setPage(form);
+
+  // Fyll i utkast eller befintligt svar
+  try {
+    const src = editing ? editing.answers : JSON.parse(ls.get(draftKey) || 'null');
+    if (src && typeof src === 'object') blocks.forEach(b => { if (src[b.q.id] !== undefined) b.set(src[b.q.id]); });
+  } catch {}
+
+  async function submit(e) {
+    e.preventDefault();
+    formErr.hidden = true;
+    let firstBad = null;
+    const answers = {};
+    for (const b of blocks) {
+      const v = b.get();
+      const bad = b.q.required && isEmpty(v);
+      b.el.classList.toggle('has-err', bad); b.err.hidden = !bad; b.err.textContent = 'Den här frågan måste besvaras.';
+      if (bad) firstBad = firstBad || b.el;
+      if (!isEmpty(v)) answers[b.q.id] = v;
+    }
+    if (firstBad) { firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    if (!blocks.some(b => b.q.type !== 'date' && !isEmpty(answers[b.q.id]))) { formErr.hidden = false; formErr.textContent = 'Skriv något innan du sparar.'; return; }
+    btn.disabled = true; btn.textContent = 'Sparar…';
+    clearTimeout(draftTimer);
+    try {
+      if (editing) {
+        // Behåll svar på frågor som inte visades (om något saknas i formuläret)
+        const merged = { ...answers };
+        for (const [k, v] of Object.entries(editing.answers || {})) if (!blocks.some(b => b.q.id === k)) merged[k] = v;
+        await withTimeout(backend.updateResponse(editing.id, merged), 15000);
+        S.editing = null; toast('Ändringarna är sparade'); location.hash = '#mina';
+      } else {
+        await withTimeout(backend.addResponse(S.user.username, answers, survey.questions), 15000);
+        ls.del(draftKey);
+        setPage(msgCard('🙌', 'Sparat!', 'Ditt svar är sparat på ditt konto.',
+          h('div', { class: 'row', style: 'justify-content:center;margin-top:20px' },
+            h('a', { class: 'btn primary', href: '#mina' }, 'Mina svar'),
+            h('button', { class: 'btn', onclick: () => showForm() }, 'Skriv ett nytt'))));
+      }
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false; btn.textContent = label;
+      formErr.hidden = false;
+      formErr.textContent = err?.code === 'permission-denied'
+        ? 'Svaret kunde inte sparas. Formuläret kan ha stängts eller kontot spärrats – ladda om sidan.'
+        : 'Något gick fel när svaret skulle sparas. Kontrollera internetanslutningen och försök igen. Det du skrivit finns kvar.';
+    }
+  }
+}
+
+/* =====================================================================
+   MINA SVAR
+   ===================================================================== */
+function entryView(r, fallbackQs) {
+  const qs = (r.fragor && r.fragor.length ? r.fragor : fallbackQs || []).map(normalizeQuestion);
+  const a = r.answers || {};
+  const dateQ = qs.find(q => q.type === 'date' && !isEmpty(a[q.id]));
+  const subQ = qs.find(q => q.type === 'short' && !isEmpty(a[q.id]));
+  const items = qs.filter(q => q !== dateQ && !isEmpty(a[q.id])).map(q => ({ q: q.text, a: fmtAnswer(q.type, a[q.id]) }));
+  return {
+    title: dateQ ? fmtDay(a[dateQ.id]) : fmtTime(r.createdAt),
+    sub: subQ ? fmtAnswer(subQ.type, a[subQ.id]) : '',
+    items,
+    text() { return [this.title + (this.sub ? ' – ' + this.sub : ''), ...items.map(it => `${it.q}\n${it.a}`)].join('\n\n'); },
+  };
+}
+
+function showMine() {
+  document.title = 'Mina svar';
+  if (S.mineErr) { setPage(msgCard('📡', 'Kunde inte hämta dina svar', 'Kontrollera internetanslutningen och ladda om sidan.')); return; }
+  if (!S.mineLoaded) { setPage(loadingCard('Hämtar dina svar…')); return; }
+  const list = S.mine;
+  if (!list.length) {
+    setPage(msgCard('📒', 'Inga sparade svar än', 'När du sparar formuläret hamnar dina svar här, så att du kan läsa dem igen.',
+      h('a', { class: 'btn primary', href: '#', style: 'margin-top:16px' }, 'Skriv ditt första')));
+    return;
+  }
+  const open = new Set([...document.querySelectorAll('details.mine[open]')].map(d => d.dataset.id));
+  const cards = list.map((r, i) => {
+    const v = entryView(r);
+    return h('details', { class: 'card mine', 'data-id': r.id, open: open.has(r.id) || (open.size === 0 && i === 0) },
+      h('summary', {}, h('div', {}, h('b', {}, v.title), v.sub && h('span', { class: 'muted' }, ' · ' + v.sub)), h('span', { class: 'chev' }, '›')),
+      h('dl', { class: 'resp' }, v.items.map(it => [h('dt', {}, it.q), h('dd', {}, it.a)])),
+      r.updatedAt && r.createdAt && r.updatedAt - r.createdAt > 60000 && h('div', { class: 'small muted', style: 'margin-top:10px' }, `Ändrat ${fmtTime(r.updatedAt)}`),
+      h('div', { class: 'row', style: 'margin-top:16px' },
+        h('button', { class: 'btn sm', onclick: () => { S.editing = r; if (page() === 'start') route(); else location.hash = '#'; } }, '✎ Redigera'),
+        h('button', { class: 'btn sm', onclick: async () => {
+          try { await navigator.clipboard.writeText(v.text()); toast('Kopierat'); } catch { toast('Kunde inte kopiera här'); }
+        } }, 'Kopiera text'),
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn sm danger', onclick: async () => {
+          if (!(await confirmDialog('Ta bort svaret?', 'Svaret tas bort permanent från ditt konto.', 'Ta bort', true))) return;
+          try { await backend.deleteResponse(r.id); toast('Borttaget'); } catch (e) { console.error(e); toast('Kunde inte ta bort'); }
+        } }, 'Ta bort')));
+  });
+  const y = document.querySelector('details.mine') ? scrollY : 0;
+  setPage(h('h1', {}, 'Mina svar'), h('p', { class: 'lead', style: 'margin-bottom:16px' }, `${list.length} sparade på ditt konto`), cards);
+  if (y) scrollTo(0, y);
+}
+
+/* =====================================================================
+   KONTO
+   ===================================================================== */
+function showAccount() {
+  document.title = 'Konto';
+  const nameIn = h('input', { type: 'text', id: 'k_name', maxlength: 60, value: S.user.name });
+  const nameBtn = h('button', { class: 'btn primary', type: 'submit' }, 'Spara namn');
+  const oldPw = h('input', { type: 'password', id: 'k_old', autocomplete: 'current-password' });
+  const newPw = h('input', { type: 'password', id: 'k_new', autocomplete: 'new-password' });
+  const newPw2 = h('input', { type: 'password', id: 'k_new2', autocomplete: 'new-password' });
+  const pwErr = h('div', { class: 'error-box', hidden: true });
+  const pwBtn = h('button', { class: 'btn primary', type: 'submit' }, 'Byt lösenord');
+  setPage(
+    h('h1', {}, 'Konto'),
+    h('p', { class: 'lead', style: 'margin-bottom:16px' }, 'Användarnamn: ', h('b', {}, '@' + S.user.username)),
+    h('form', { class: 'card', onsubmit: async e => {
+      e.preventDefault(); nameBtn.disabled = true;
+      try { await backend.updateName(S.user.username, nameIn.value.trim()); S.user.name = nameIn.value.trim(); toast('Namnet är sparat'); route(); }
+      catch (ex) { console.error(ex); toast('Kunde inte spara namnet'); nameBtn.disabled = false; }
+    } },
+      h('h2', {}, 'Ditt namn'),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'k_name' }, 'Namn (visas för admin)'), nameIn),
+      h('div', { style: 'margin-top:14px' }, nameBtn)),
+    !S.admin && h('div', { class: 'notice', style: 'margin-bottom:16px' }, 'Lösenordet sköts av den som ansvarar för sidan. Fråga hen om du vill byta.'),
+    S.admin && h('form', { class: 'card', onsubmit: async e => {
+      e.preventDefault(); pwErr.hidden = true;
+      const fail = t => { pwErr.textContent = t; pwErr.hidden = false; };
+      if (newPw.value.length < 6) return fail('Det nya lösenordet måste ha minst 6 tecken.');
+      if (newPw.value !== newPw2.value) return fail('De nya lösenorden är inte likadana.');
+      pwBtn.disabled = true;
+      try { await withTimeout(backend.changePassword(oldPw.value, newPw.value), 15000); toast('Lösenordet är bytt'); oldPw.value = newPw.value = newPw2.value = ''; }
+      catch (ex) { console.error(ex); fail(/invalid-credential|wrong-password/.test(ex?.code || '') ? 'Nuvarande lösenord stämmer inte.' : authError(ex)); }
+      pwBtn.disabled = false;
+    } },
+      h('h2', {}, 'Byt lösenord'),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'k_old' }, 'Nuvarande lösenord'), pwField(oldPw)),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'k_new' }, 'Nytt lösenord (minst 6 tecken)'), pwField(newPw)),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'k_new2' }, 'Upprepa nytt lösenord'), pwField(newPw2)),
+      h('div', { style: 'margin-top:14px' }, pwBtn, pwErr)),
+    h('button', { class: 'btn block', onclick: logout }, 'Logga ut'));
+}
+
+/* =====================================================================
+   ADMIN
+   ===================================================================== */
+async function showAdmin() {
+  const tok = routeToken;
+  document.title = 'Admin';
+  setPage(loadingCard('Laddar admin…'));
+  let survey;
+  try { survey = await withTimeout(backend.getSurvey()); }
+  catch (e) { console.error(e); if (tok === routeToken) setPage(msgCard('📡', 'Kunde inte ladda', 'Kontrollera internetanslutningen och ladda om sidan.')); return; }
+  if (tok !== routeToken) return;
+  const cleanups = routeCleanups;
+
+  const A = {
+    tab: 'questions',
+    draft: survey ? normalizeSurvey(survey) : newSurvey(),
+    saved: survey ? JSON.stringify(normalizeSurvey(survey)) : null,
+    responses: [], users: [], creds: {},
+    loaded: { r: false, u: false, a: false, c: false }, err: null,
+    resView: 'summary', userFilter: '', showAll: {}, accSearch: '',
+  };
+  const savedSurvey = () => A.saved ? JSON.parse(A.saved) : null;
+  const isDirty = () => JSON.stringify(A.draft) !== A.saved;
+  const userMap = () => Object.fromEntries(A.users.map(u => [u.username, u]));
+  const whoLabel = un => { const u = userMap()[un]; return u?.name ? `${u.name} (@${un})` : '@' + (un || 'okänd'); };
+
+  const panel = h('div');
+  const countR = h('span', { class: 'badge' }, '…');
+  const countU = h('span', { class: 'badge' }, '…');
+  const tabs = {
+    questions: h('button', { class: 'tab', onclick: () => go('questions') }, 'Frågor'),
+    results: h('button', { class: 'tab', onclick: () => go('results') }, 'Svar', countR),
+    accounts: h('button', { class: 'tab', onclick: () => go('accounts') }, 'Konton', countU),
+    share: h('button', { class: 'tab', onclick: () => go('share') }, 'Dela'),
+  };
+  const statusPill = h('button', { class: 'pill', onclick: toggleOpen, title: 'Klicka för att öppna/stänga formuläret' });
+  const saveMsg = h('span', { class: 'small muted' }, 'Osparade ändringar');
+  const saveBtn = h('button', { class: 'btn primary', onclick: save }, 'Spara');
+  const savebar = h('div', { class: 'savebar' }, h('div', { class: 'inner' },
+    saveMsg, h('span', { class: 'spacer' }), h('button', { class: 'btn ghost', onclick: discard }, 'Ångra'), saveBtn));
+
+  setPage(
+    h('div', { class: 'topbar' }, h('h1', {}, 'Admin'), statusPill),
+    h('div', { class: 'tabs', role: 'tablist' }, Object.values(tabs)),
+    panel);
+  document.body.append(savebar);
+  cleanups.push(() => savebar.remove());
+  const beforeUnload = e => { if (isDirty()) { e.preventDefault(); e.returnValue = ''; } };
+  addEventListener('beforeunload', beforeUnload);
+  cleanups.push(() => removeEventListener('beforeunload', beforeUnload));
+
+  const onErr = e => { console.error(e); A.err = e; redrawData(); };
+  const redrawData = () => {
+    countR.textContent = A.loaded.r ? A.responses.length : '…';
+    countU.textContent = A.loaded.u ? A.users.length : '…';
+    if (A.tab === 'results' || A.tab === 'accounts') drawPanel();
+  };
+  cleanups.push(
+    backend.watchAll(list => { A.responses = list; A.loaded.r = true; redrawData(); }, onErr),
+    backend.watchUsers(list => { A.users = list.sort((a, b) => (a.name || a.username).localeCompare(b.name || b.username, 'sv')); A.loaded.u = true; redrawData(); }, onErr),
+    backend.watchCredentials(map => { A.creds = map; A.loaded.c = true; redrawData(); }, onErr));
+
+  function go(tab) { A.tab = tab; drawPanel(); }
+  function updateChrome() {
+    for (const [k, b] of Object.entries(tabs)) { b.classList.toggle('on', k === A.tab); b.setAttribute('aria-selected', k === A.tab); }
+    statusPill.className = 'pill' + (A.draft.open ? ' on' : '');
+    statusPill.replaceChildren(h('i'), A.draft.open ? 'Öppet för svar' : 'Stängt');
+    savebar.classList.toggle('show', isDirty());
+    saveMsg.textContent = A.saved ? 'Osparade ändringar' : 'Frågorna är inte sparade än';
+  }
+  function drawPanel() {
+    updateChrome();
+    const y = scrollY;
+    panel.replaceChildren(
+      A.tab === 'questions' ? editorView() : A.tab === 'results' ? resultsView() : A.tab === 'accounts' ? accountsView() : shareView());
+    if (A.tab !== 'questions') scrollTo(0, y);
+  }
+  const changed = () => updateChrome();
+  function saveError(e) {
+    console.error(e);
+    toast(e?.code === 'permission-denied' ? 'Ingen behörighet – kontrollera firestore.rules' : 'Kunde inte spara – försök igen');
+  }
+  async function toggleOpen() {
+    const next = !A.draft.open;
+    if (!A.saved) { A.draft.open = next; changed(); toast(next ? 'Öppnas när du sparar' : 'Stängs när du sparar'); return; }
+    const s = savedSurvey(); s.open = next;
+    statusPill.disabled = true;
+    try { await withTimeout(backend.saveSurvey(s)); A.saved = JSON.stringify(s); A.draft.open = next; toast(next ? 'Formuläret är öppet' : 'Formuläret är stängt'); }
+    catch (e) { saveError(e); }
+    statusPill.disabled = false; changed();
+  }
+  async function save() {
+    const d = clone(A.draft);
+    d.title = d.title.trim();
+    d.questions.forEach(q => { q.text = q.text.trim(); q.options = q.options.map(o => o.trim()).filter(Boolean); if (!isChoice(q.type)) q.options = []; });
+    const problems = [];
+    if (!d.title) problems.push('Formuläret behöver en rubrik.');
+    if (!d.questions.length) problems.push('Lägg till minst en fråga.');
+    d.questions.forEach((q, i) => {
+      if (!q.text) problems.push(`Fråga ${i + 1} saknar text.`);
+      if (isChoice(q.type) && q.options.length < 2) problems.push(`Fråga ${i + 1} behöver minst två svarsalternativ.`);
+      if (new Set(q.options).size !== q.options.length) problems.push(`Fråga ${i + 1} har dubbla svarsalternativ.`);
+    });
+    if (problems.length) { await confirmDialog('Kan inte spara än', problems.join(' '), 'OK'); return; }
+    saveBtn.disabled = true; saveBtn.textContent = 'Sparar…';
+    try { const clean = normalizeSurvey(d); await withTimeout(backend.saveSurvey(clean)); A.saved = JSON.stringify(clean); A.draft = clone(clean); toast('Sparat'); }
+    catch (e) { saveError(e); }
+    saveBtn.disabled = false; saveBtn.textContent = 'Spara';
+    drawPanel();
+  }
+  function discard() { A.draft = A.saved ? JSON.parse(A.saved) : newSurvey(); drawPanel(); }
+
+  /* ----- Frågor ----- */
+  function editorView() {
+    const d = A.draft;
+    const answeredIds = new Set(A.responses.flatMap(r => Object.keys(r.answers || {})));
+    const about = h('div', { class: 'card' },
+      h('h2', {}, 'Om formuläret'),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'e_title' }, 'Rubrik'),
+        h('input', { type: 'text', id: 'e_title', value: d.title, maxlength: 150, oninput: e => { d.title = e.target.value; changed(); } })),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'e_desc' }, 'Beskrivning ', h('span', { class: 'muted', style: 'font-weight:400' }, '(frivilligt)')),
+        h('textarea', { id: 'e_desc', value: d.description, maxlength: 2000, style: 'min-height:72px', oninput: e => { d.description = e.target.value; changed(); } })),
+      h('p', { class: 'small muted', style: 'margin:12px 0 0' }, 'Ändringar påverkar bara nya svar. Tidigare svar visas med frågorna som gällde när de sparades.'));
+
+    const cards = d.questions.map((q, i) => {
+      const move = dir => { const j = i + dir; [d.questions[i], d.questions[j]] = [d.questions[j], d.questions[i]]; drawPanel(); };
+      const del = async () => {
+        if (answeredIds.has(q.id) && !(await confirmDialog('Ta bort frågan?', 'Frågan har svar. De finns kvar i användarnas egna svar men visas inte i sammanställningen.', 'Ta bort', true))) return;
+        d.questions.splice(i, 1); drawPanel();
+      };
+      const typeSel = h('select', { 'aria-label': 'Frågetyp', value: q.type, onchange: e => {
+        q.type = e.target.value;
+        if (isChoice(q.type) && q.options.length < 2) q.options = [...q.options, '', ''].slice(0, Math.max(2, q.options.length));
+        drawPanel();
+      } }, Object.entries(TYPES).map(([k, v]) => h('option', { value: k }, v)));
+      let extra = null;
+      if (isChoice(q.type)) {
+        extra = h('div', { class: 'field' },
+          h('label', { class: 'lbl' }, 'Svarsalternativ'),
+          q.options.map((o, k) => h('div', { class: 'opt-row' },
+            h('span', { class: 'dot' + (q.type === 'multi' ? ' sq' : '') }),
+            h('input', { type: 'text', value: o, maxlength: 200, placeholder: `Alternativ ${k + 1}`, 'aria-label': `Alternativ ${k + 1}`, 'data-opt': q.id + ':' + k,
+              oninput: e => { q.options[k] = e.target.value; changed(); },
+              onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); q.options.splice(k + 1, 0, ''); drawPanel(); focusOpt(q.id, k + 1); } } }),
+            h('button', { class: 'btn ghost icon', title: 'Ta bort alternativ', 'aria-label': 'Ta bort alternativ', disabled: q.options.length <= 1,
+              onclick: () => { q.options.splice(k, 1); drawPanel(); } }, '✕'))),
+          h('button', { class: 'btn sm', onclick: () => { q.options.push(''); drawPanel(); focusOpt(q.id, q.options.length - 1); } }, '+ Lägg till alternativ'));
+      } else if (q.type === 'scale') {
+        extra = h('div', { class: 'field qedit-grid', style: 'grid-template-columns:1fr 1fr' },
+          h('div', {}, h('label', { class: 'lbl' }, 'Text vid 1'), h('input', { type: 'text', value: q.minLabel, maxlength: 60, placeholder: 't.ex. Inte alls', oninput: e => { q.minLabel = e.target.value; changed(); } })),
+          h('div', {}, h('label', { class: 'lbl' }, 'Text vid 5'), h('input', { type: 'text', value: q.maxLabel, maxlength: 60, placeholder: 't.ex. Väldigt mycket', oninput: e => { q.maxLabel = e.target.value; changed(); } })));
+      }
+      return h('div', { class: 'card' },
+        h('div', { class: 'qedit-head' },
+          h('span', { class: 'qnum' }, `Fråga ${i + 1}`), h('span', { class: 'spacer' }),
+          h('button', { class: 'btn ghost icon', title: 'Flytta upp', 'aria-label': 'Flytta upp', disabled: i === 0, onclick: () => move(-1) }, '↑'),
+          h('button', { class: 'btn ghost icon', title: 'Flytta ner', 'aria-label': 'Flytta ner', disabled: i === d.questions.length - 1, onclick: () => move(1) }, '↓'),
+          h('button', { class: 'btn ghost icon', title: 'Kopiera fråga', 'aria-label': 'Kopiera fråga', onclick: () => { d.questions.splice(i + 1, 0, { ...clone(q), id: uid() }); drawPanel(); } }, '⧉'),
+          h('button', { class: 'btn ghost icon danger', title: 'Ta bort fråga', 'aria-label': 'Ta bort fråga', onclick: del }, '🗑')),
+        h('div', { class: 'qedit-grid' },
+          h('textarea', { value: q.text, placeholder: 'Skriv frågan här…', maxlength: 500, style: 'min-height:48px', 'aria-label': `Text för fråga ${i + 1}`, 'data-qtext': q.id,
+            oninput: e => { q.text = e.target.value; changed(); } }),
+          typeSel),
+        extra,
+        h('div', { style: 'margin-top:14px' },
+          h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: q.required, onchange: e => { q.required = e.target.checked; changed(); } }), 'Måste besvaras')));
+    });
+    const addRow = h('div', { class: 'card', style: 'border-style:dashed;box-shadow:none;background:transparent' },
+      h('div', { class: 'small muted', style: 'margin-bottom:10px;font-weight:600' }, 'Lägg till fråga'),
+      h('div', { class: 'row' }, Object.entries(TYPES).map(([k, v]) => h('button', { class: 'btn sm', onclick: () => {
+        const q = newQuestion(k); d.questions.push(q); drawPanel();
+        const ta = panel.querySelector(`[data-qtext="${q.id}"]`); if (ta) { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); ta.focus({ preventScroll: true }); }
+      } }, '+ ' + v))));
+    return h('div', {}, about, cards, addRow);
+  }
+  function focusOpt(qid, k) { const el = panel.querySelector(`[data-opt="${qid}:${k}"]`); if (el) el.focus(); }
+
+  /* ----- Svar ----- */
+  function dataError() {
+    return h('div', { class: 'card' }, h('h2', {}, 'Kunde inte hämta data'),
+      h('p', { class: 'lead' }, A.err?.code === 'permission-denied'
+        ? `Kontot @${S.user.username} får inte läsa allas data. Kontrollera att användarnamnet står i firestore.rules och att reglerna är publicerade (README, steg 4).`
+        : 'Kontrollera internetanslutningen och ladda om sidan.'));
+  }
+  function resultsView() {
+    if (A.err) return dataError();
+    if (!A.loaded.r || !A.loaded.u) return loadingCard('Hämtar svar…');
+    const sv = savedSurvey() || A.draft;
+    const R = A.userFilter ? A.responses.filter(r => r.username === A.userFilter) : A.responses;
+    const usersWith = [...new Set(A.responses.map(r => r.username))].sort((a, b) => whoLabel(a).localeCompare(whoLabel(b), 'sv'));
+    const head = h('div', { class: 'card' },
+      h('div', { class: 'row', style: 'align-items:flex-end' },
+        h('div', {}, h('div', { class: 'stat' }, R.length), h('div', { class: 'muted small' }, 'svar', R[0]?.createdAt && ` · senaste ${fmtTime(R[0].createdAt)}`)),
+        h('span', { class: 'spacer' }),
+        h('div', { class: 'seg' },
+          h('button', { class: A.resView === 'summary' ? 'on' : '', onclick: () => { A.resView = 'summary'; drawPanel(); } }, 'Sammanställning'),
+          h('button', { class: A.resView === 'list' ? 'on' : '', onclick: () => { A.resView = 'list'; drawPanel(); } }, 'Alla svar'))),
+      h('div', { class: 'field' },
+        h('select', { 'aria-label': 'Visa svar från', value: A.userFilter, onchange: e => { A.userFilter = e.target.value; A.showAll = {}; drawPanel(); } },
+          h('option', { value: '' }, `Alla användare (${usersWith.length})`),
+          usersWith.map(u => h('option', { value: u }, whoLabel(u))))),
+      R.length > 0 && h('div', { class: 'row', style: 'margin-top:14px' },
+        h('button', { class: 'btn sm', onclick: () => downloadCsv(sv, R) }, '⬇ Ladda ner (Excel)'),
+        h('button', { class: 'btn sm', onclick: () => copyTable(sv, R) }, 'Kopiera tabell')));
+    if (!R.length) return h('div', {}, head, h('div', { class: 'notice' }, 'Inga svar än. Dela länken under fliken Dela – svaren dyker upp här direkt.'));
+    return h('div', {}, head, A.resView === 'summary' ? summaryCards(sv, R) : listCards(sv, R));
+  }
+  function summaryCards(sv, R) {
+    return sv.questions.map((q, i) => {
+      const vals = R.map(r => ({ v: (r.answers || {})[q.id], r })).filter(x => !isEmpty(x.v));
+      const head = [h('h2', {}, `${i + 1}. ${q.text}`), h('div', { class: 'small muted', style: 'margin-bottom:8px' }, `${TYPES[q.type]} · ${vals.length} av ${R.length} svarade`)];
+      let body;
+      if (q.type === 'date') {
+        const counts = new Map();
+        vals.forEach(({ v }) => counts.set(String(v), (counts.get(String(v)) || 0) + 1));
+        const denom = Math.max(1, vals.length);
+        body = [...counts].sort((a, b) => b[0].localeCompare(a[0])).map(([k, n]) => h('div', { class: 'bar-row' },
+          h('div', { class: 'bar-top' }, h('span', {}, fmtDay(k)), h('b', {}, `${n} svar`)),
+          h('div', { class: 'bar' }, h('i', { style: `width:${100 * n / denom}%` }))));
+      } else if (isChoice(q.type) || q.type === 'scale') {
+        const counts = new Map();
+        (q.type === 'scale' ? ['1', '2', '3', '4', '5'] : [...q.options]).forEach(k => counts.set(k, 0));
+        let other = 0;
+        vals.forEach(({ v }) => (Array.isArray(v) ? v : [v]).forEach(x => { x = String(x); if (counts.has(x)) counts.set(x, counts.get(x) + 1); else other++; }));
+        const denom = Math.max(1, vals.length);
+        body = [[...counts].map(([k, n]) => {
+          let label = k;
+          if (q.type === 'scale') label = k + (k === '1' && q.minLabel ? ` – ${q.minLabel}` : k === '5' && q.maxLabel ? ` – ${q.maxLabel}` : '');
+          return h('div', { class: 'bar-row' },
+            h('div', { class: 'bar-top' }, h('span', {}, label), h('b', {}, `${n}  (${Math.round(100 * n / denom)} %)`)),
+            h('div', { class: 'bar' }, h('i', { style: `width:${100 * n / denom}%` })));
+        }),
+          other > 0 && h('div', { class: 'small muted' }, `${other} svar med alternativ som inte längre finns`),
+          q.type === 'scale' && vals.length > 0 && h('div', { style: 'margin-top:10px;font-weight:600' },
+            'Snitt: ', fmtNum(vals.reduce((a, { v }) => a + Number(v), 0) / vals.length), h('span', { class: 'muted', style: 'font-weight:400' }, ' av 5'))];
+      } else {
+        const shown = A.showAll[q.id] ? vals : vals.slice(0, 8);
+        body = [!vals.length && h('div', { class: 'muted small' }, 'Inga svar på den här frågan än.'),
+          shown.map(({ v, r }) => h('div', { class: 'txt-ans' }, String(v), h('span', { class: 'who' }, `${whoLabel(r.username)} · ${fmtTime(r.createdAt)}`))),
+          vals.length > shown.length && h('button', { class: 'btn sm', onclick: () => { A.showAll[q.id] = true; drawPanel(); } }, `Visa alla ${vals.length}`)];
+      }
+      return h('div', { class: 'card' }, head, body);
+    });
+  }
+  function listCards(sv, R) {
+    return R.map(r => {
+      const v = entryView(r, sv.questions);
+      return h('details', { class: 'card mine' },
+        h('summary', {}, h('div', {}, h('b', {}, whoLabel(r.username)), h('div', { class: 'small muted' }, v.title + (v.sub ? ' · ' + v.sub : ''))), h('span', { class: 'chev' }, '›')),
+        h('dl', { class: 'resp' }, v.items.map(it => [h('dt', {}, it.q), h('dd', {}, it.a)])),
+        h('div', { class: 'row', style: 'margin-top:14px' },
+          h('span', { class: 'small muted' }, `Sparat ${fmtTime(r.createdAt)}`), h('span', { class: 'spacer' }),
+          h('button', { class: 'btn sm danger', onclick: async () => {
+            if (!(await confirmDialog('Radera svaret?', `Svaret från ${whoLabel(r.username)} raderas permanent, även från användarens konto.`, 'Radera', true))) return;
+            try { await backend.deleteResponses([r.id]); toast('Svaret raderat'); } catch (e) { saveError(e); }
+          } }, 'Radera')));
+    });
+  }
+  function tableRows(sv, R) {
+    const header = ['Tidpunkt', 'Användarnamn', 'Namn', ...sv.questions.map(q => q.text)];
+    const um = userMap();
+    const rows = R.map(r => [fmtTime(r.createdAt), r.username || '', um[r.username]?.name || '', ...sv.questions.map(q => {
+      const v = (r.answers || {})[q.id]; return isEmpty(v) ? '' : fmtAnswer(q.type, v);
+    })]);
+    return [header, ...rows];
+  }
+  function downloadCsv(sv, R) {
+    const esc = s => /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const csv = '﻿' + tableRows(sv, R).map(r => r.map(c => esc(String(c))).join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = h('a', { href: url, download: (sv.title || 'svar').replace(/[^\wåäöÅÄÖ -]/g, '').trim() + ' – svar.csv' });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('Om inget laddas ner: använd "Kopiera tabell"');
+  }
+  async function copyTable(sv, R) {
+    const tsv = tableRows(sv, R).map(r => r.map(c => String(c).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(tsv); toast('Kopierat – klistra in i Excel eller Google Kalkylark'); }
+    catch { toast('Kunde inte kopiera här'); }
+  }
+
+  /* ----- Konton ----- */
+  const WORDS = ['sol', 'hav', 'berg', 'skog', 'ljus', 'fisk', 'bat', 'regn', 'vind', 'sno', 'eld', 'sten', 'lamm', 'duva', 'klippa',
+    'kalla', 'brod', 'port', 'moln', 'kung', 'vatten', 'trad', 'frukt', 'vag', 'salt', 'stjarna', 'lampa', 'hjarta', 'krona', 'dag'];
+  const rnd = n => { try { return crypto.getRandomValues(new Uint32Array(1))[0] % n; } catch { return Math.floor(Math.random() * n); } };
+  const genPw = () => WORDS[rnd(WORDS.length)] + WORDS[rnd(WORDS.length)] + String(10 + rnd(90));
+  const firstName = name => (String(name || '').trim().split(/\s+/)[0] || '').split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-');
+  const defaultPw = name => String(typeof PASSWORD_PATTERN === 'string' ? PASSWORD_PATTERN : '{förnamn}').replace(/\{förnamn\}/g, firstName(name));
+  const slug = t => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/^[._-]+/, '').slice(0, 20);
+  const siteUrl = () => location.href.split('#')[0];
+  A.reveal = A.reveal || new Set();
+
+  function formDialog({ title, text, fields, okLabel, onOk, wire }) {
+    return new Promise(resolve => {
+      const inputs = {};
+      const err = h('div', { class: 'error-box', hidden: true });
+      const ok = h('button', { class: 'btn primary', type: 'submit' }, okLabel);
+      const close = v => { back.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+      const onKey = e => { if (e.key === 'Escape') close(null); };
+      const form = h('form', { class: 'modal', novalidate: true, onsubmit: async e => {
+        e.preventDefault(); err.hidden = true;
+        const vals = Object.fromEntries(Object.entries(inputs).map(([k, i]) => [k, i.value.trim()]));
+        ok.disabled = true; const label = ok.textContent; ok.textContent = 'Vänta…';
+        const msg = await onOk(vals);
+        ok.disabled = false; ok.textContent = label;
+        if (msg) { err.textContent = msg; err.hidden = false; } else close(vals);
+      } },
+        h('h2', {}, title), text && h('p', {}, text),
+        fields.map(f => {
+          const inp = inputs[f.key] = h('input', { type: 'text', value: f.value || '', maxlength: f.max || 60, placeholder: f.placeholder,
+            autocapitalize: f.lower ? 'none' : null, spellcheck: 'false', autocomplete: 'off', 'aria-label': f.label });
+          if (f.lower) inp.addEventListener('input', () => { const p = inp.selectionStart; inp.value = inp.value.toLowerCase(); inp.setSelectionRange(p, p); });
+          return h('div', { class: 'field', style: 'margin-top:12px' },
+            h('label', { class: 'lbl' }, f.label),
+            f.gen ? h('div', { class: 'row', style: 'flex-wrap:nowrap' }, inp, h('button', { type: 'button', class: 'btn sm', onclick: () => { inp.value = f.gen(inputs); } }, f.genLabel || 'Slumpa')) : inp,
+            f.hint && h('div', { class: 'small muted', style: 'margin-top:4px' }, f.hint));
+        }),
+        h('div', { class: 'row', style: 'justify-content:flex-end;margin-top:20px' },
+          h('button', { type: 'button', class: 'btn', onclick: () => close(null) }, 'Avbryt'), ok),
+        err);
+      const back = h('div', { class: 'modal-back', onclick: e => { if (e.target === back) close(null); } }, form);
+      document.addEventListener('keydown', onKey);
+      document.body.append(back);
+      wire?.(inputs);
+      Object.values(inputs)[0]?.focus();
+    });
+  }
+  const loginText = u => `Hej ${u.name || u.username}! Här är din inloggning till gudstjänstanteckningarna:\nLänk: ${siteUrl()}\nAnvändarnamn: ${u.username}\nLösenord: ${A.creds[u.username] || '(fråga mig)'}`;
+  const writeErr = e => { console.error(e); return e?.code === 'permission-denied' ? 'Ingen behörighet – kontrollera firestore.rules (README, steg 4).' : authError(e); };
+
+  async function createAccountDialog() {
+    const vals = await formDialog({
+      title: 'Skapa konto',
+      text: 'Ge personen användarnamnet och lösenordet. Lösenordet kan du alltid se här under Konton.',
+      okLabel: 'Skapa konto',
+      fields: [
+        { key: 'name', label: 'Namn', placeholder: 't.ex. Elin Svensson' },
+        { key: 'username', label: 'Användarnamn', lower: true, max: 20, hint: '3–20 tecken: a–z, siffror, punkt, bindestreck (inga å/ä/ö eller mellanslag)' },
+        { key: 'pw', label: 'Lösenord', value: defaultPw(''), gen: i => defaultPw(i.name.value), genLabel: 'Standard', hint: `Fylls i automatiskt: ${PASSWORD_PATTERN.replace('{förnamn}', 'Förnamn')}. Du kan skriva ett eget.` },
+      ],
+      wire: inp => {
+        let touched = false, pwTouched = false;
+        inp.username.addEventListener('input', () => { touched = true; });
+        inp.pw.addEventListener('input', () => { pwTouched = true; });
+        inp.name.addEventListener('input', () => {
+          if (!touched) inp.username.value = slug(inp.name.value);
+          if (!pwTouched) inp.pw.value = defaultPw(inp.name.value);
+        });
+      },
+      onOk: async v => {
+        if (!v.name) return 'Skriv personens namn.';
+        if (!USERNAME_RE.test(v.username)) return 'Användarnamnet ska vara 3–20 tecken: små bokstäver a–z, siffror, punkt, bindestreck eller understreck, och börja med en bokstav eller siffra.';
+        if (A.users.some(u => u.username === v.username)) return 'Användarnamnet är upptaget.';
+        if (v.pw.length < 6) return 'Lösenordet måste ha minst 6 tecken.';
+        if (v.pw.includes('{')) return 'Lösenordet innehåller {förnamn} – skriv ett namn först.';
+        try { await withTimeout(backend.createAccount(v.username, v.name, v.pw), 20000); return null; } catch (e) { return writeErr(e); }
+      },
+    });
+    if (vals) { A.reveal.add(vals.username); A.accSearch = ''; toast(`Kontot @${vals.username} är skapat`); drawPanel(); }
+  }
+  async function newPasswordDialog(u) {
+    const vals = await formDialog({
+      title: 'Nytt lösenord', text: `För ${u.name || '@' + u.username}. Det gamla lösenordet slutar fungera direkt.`, okLabel: 'Spara lösenord',
+      fields: [{ key: 'pw', label: 'Nytt lösenord', value: defaultPw(u.name), gen: () => defaultPw(u.name), genLabel: 'Standard', hint: 'Minst 6 tecken' }],
+      onOk: async v => {
+        if (v.pw.length < 6) return 'Lösenordet måste ha minst 6 tecken.';
+        try { await withTimeout(backend.setPassword(u.username, A.creds[u.username], v.pw), 20000); return null; }
+        catch (e) {
+          if (e?.code === 'no-stored-password') return 'Det nuvarande lösenordet är okänt (kontot skapades utanför sidan), så det kan inte bytas här. Se README under "Okänt lösenord".';
+          if (/invalid-credential|wrong-password/.test(e?.code || '')) return 'Det sparade lösenordet stämmer inte längre, så det kan inte bytas här. Se README under "Okänt lösenord".';
+          return writeErr(e);
+        }
+      },
+    });
+    if (vals) { A.reveal.add(u.username); toast('Lösenordet är bytt'); drawPanel(); }
+  }
+  async function renameDialog(u) {
+    const vals = await formDialog({
+      title: 'Ändra namn', okLabel: 'Spara', fields: [{ key: 'name', label: 'Namn', value: u.name }],
+      onOk: async v => { try { await backend.updateName(u.username, v.name); return null; } catch (e) { return writeErr(e); } },
+    });
+    if (vals) toast('Namnet är ändrat');
+  }
+
+  function accountsView() {
+    if (A.err) return dataError();
+    if (!A.loaded.u || !A.loaded.r || !A.loaded.c) return loadingCard('Hämtar konton…');
+    const counts = {}, last = {};
+    A.responses.forEach(r => { counts[r.username] = (counts[r.username] || 0) + 1; if (!last[r.username] || r.createdAt > last[r.username]) last[r.username] = r.createdAt; });
+    const q = A.accSearch.trim().toLowerCase();
+    const list = A.users.filter(u => !q || u.username.includes(q) || (u.name || '').toLowerCase().includes(q));
+    const search = h('input', { type: 'text', placeholder: 'Sök namn eller användarnamn…', value: A.accSearch, 'aria-label': 'Sök konto', 'data-search': '1',
+      oninput: e => { A.accSearch = e.target.value; const pos = e.target.selectionStart; drawPanel(); const s = panel.querySelector('[data-search]'); s.focus(); s.setSelectionRange(pos, pos); } });
+    const act = async (fn, okMsg) => { try { await fn(); toast(okMsg); } catch (e) { toast(writeErr(e)); } };
+    const copy = async (text, msg) => { try { await navigator.clipboard.writeText(text); toast(msg); } catch { toast('Kunde inte kopiera här'); } };
+
+    const cards = list.map(u => {
+      const root = isRootAdmin(u.username), isAdm = root, me = u.username === S.user.username;
+      const n = counts[u.username] || 0;
+      const pw = A.creds[u.username];
+      const shown = A.reveal.has(u.username);
+      const pwRow = h('div', { class: 'row', style: 'margin-top:10px;gap:6px 10px' },
+        h('span', { class: 'small muted' }, 'Lösenord:'),
+        pw ? h('code', { style: 'font-size:15px;font-weight:600;letter-spacing:.02em' }, shown ? pw : '••••••••')
+          : h('span', { class: 'small muted' }, root ? 'sparas inte här (står i README)' : 'okänt'),
+        pw && h('button', { class: 'linkbtn small', onclick: () => { shown ? A.reveal.delete(u.username) : A.reveal.add(u.username); drawPanel(); } }, shown ? 'Dölj' : 'Visa'));
+      return h('div', { class: 'card' },
+        h('div', { class: 'who' },
+          h('b', {}, u.name || '(inget namn)'), ' ',
+          isAdm && h('span', { class: 'tag admin' }, 'Admin'), ' ',
+          u.disabled && h('span', { class: 'tag blocked' }, 'Spärrad'), ' ',
+          me && h('span', { class: 'tag' }, 'Du'),
+          h('div', { class: 'small muted' }, 'Användarnamn: ', h('b', { style: 'color:var(--ink)' }, u.username)),
+          h('div', { class: 'small muted' }, `${n} svar`, last[u.username] && ` · senast ${fmtTime(last[u.username])}`)),
+        pwRow,
+        h('div', { class: 'acc-actions' },
+          pw && h('button', { class: 'btn sm primary', onclick: () => copy(loginText(u), 'Inloggningen är kopierad – klistra in i ett sms') }, 'Kopiera inloggning'),
+          !root && h('button', { class: 'btn sm', onclick: () => newPasswordDialog(u) }, 'Nytt lösenord'),
+          n > 0 && h('button', { class: 'btn sm', onclick: () => { A.userFilter = u.username; A.resView = 'list'; go('results'); } }, 'Visa svar'),
+          h('button', { class: 'btn sm', onclick: () => renameDialog(u) }, 'Ändra namn'),
+          !root && !me && h('button', { class: 'btn sm' + (u.disabled ? '' : ' danger'), onclick: async () => {
+            if (!u.disabled && !(await confirmDialog('Spärra kontot?', `@${u.username} kan inte längre logga in och använda sidan. Svaren finns kvar och du kan häva spärren när som helst.`, 'Spärra', true))) return;
+            act(() => backend.setDisabled(u.username, !u.disabled), u.disabled ? 'Spärren är hävd' : 'Kontot är spärrat');
+          } }, u.disabled ? 'Häv spärr' : 'Spärra'),
+          !root && !me && h('button', { class: 'btn sm danger', onclick: async () => {
+            if (!(await confirmDialog('Radera kontot?', `Kontot @${u.username} och alla ${n} svar raderas permanent. Det går inte att ångra.`, 'Radera konto', true))) return;
+            try {
+              const ok = await withTimeout(backend.deleteAccount(u.username, pw, A.responses.filter(r => r.username === u.username).map(r => r.id)), 30000);
+              A.reveal.delete(u.username);
+              if (ok) toast('Kontot är raderat');
+              else await confirmDialog('Kontot är raderat', `Svaren och kontot är borttagna från sidan. Inloggningen finns dock kvar i Firebase eftersom lösenordet var okänt. Den kan inte användas till något, men vill du skapa ett nytt konto med användarnamnet ${u.username} måste du först radera den under Authentication → Users i Firebase.`, 'OK');
+            } catch (e) { toast(writeErr(e)); }
+          } }, 'Radera konto')));
+    });
+
+    const withPw = A.users.filter(u => A.creds[u.username]);
+    return h('div', {},
+      h('div', { class: 'card' },
+        h('div', { class: 'row', style: 'align-items:flex-end;margin-bottom:14px' },
+          h('div', {}, h('div', { class: 'stat' }, A.users.length), h('div', { class: 'muted small' }, 'konton',
+            ` · ${A.users.filter(u => isRootAdmin(u.username)).length} admin`,
+            A.users.some(u => u.disabled) && ` · ${A.users.filter(u => u.disabled).length} spärrade`)),
+          h('span', { class: 'spacer' }),
+          h('button', { class: 'btn primary', onclick: createAccountDialog }, '+ Skapa konto')),
+        search,
+        withPw.length > 1 && h('div', { style: 'margin-top:10px' },
+          h('button', { class: 'linkbtn small', onclick: () => copy(
+            'Inloggningar – ' + siteUrl() + '\n\n' + withPw.map(u => `${u.name || u.username}\n  Användarnamn: ${u.username}\n  Lösenord: ${A.creds[u.username]}`).join('\n\n'),
+            'Alla inloggningar är kopierade') }, 'Kopiera alla inloggningar (för utskrift)'))),
+      !list.length && h('div', { class: 'notice' }, q ? 'Inga konton matchar sökningen.' : 'Inga konton än. Klicka på "Skapa konto".'),
+      cards);
+  }
+
+  /* ----- Dela ----- */
+  function shareView() {
+    const url = location.href.split('#')[0];
+    const qrBox = h('div', { class: 'qr' }, h('div', { class: 'small muted' }, 'Skapar QR-kod…'));
+    makeQr(qrBox, url);
+    return h('div', {},
+      !A.saved && h('div', { class: 'banner' }, 'Frågorna är inte sparade än – spara under Frågor innan du delar länken.'),
+      h('div', { class: 'card' },
+        h('h2', {}, 'Länk till sidan'),
+        h('p', { class: 'lead', style: 'margin-bottom:12px' }, 'Deltagarna loggar in med användarnamnet och lösenordet som du skapar under fliken Konton.'),
+        h('div', { class: 'row', style: 'flex-wrap:nowrap' },
+          h('input', { type: 'text', readonly: true, value: url, onfocus: e => e.target.select(), 'aria-label': 'Länk' }),
+          h('button', { class: 'btn primary', onclick: async () => {
+            try { await navigator.clipboard.writeText(url); toast('Länken är kopierad'); } catch { toast('Markera och kopiera länken manuellt'); }
+          } }, 'Kopiera'))),
+      h('div', { class: 'card' }, h('h2', { style: 'margin-bottom:12px' }, 'QR-kod'), qrBox,
+        h('p', { class: 'small muted center', style: 'margin:10px 0 0' }, 'Visa på en skärm eller skriv ut – deltagarna skannar med mobilen.')));
+  }
+
+  drawPanel();
+}
+
+let qrLib;
+async function makeQr(box, text) {
+  try {
+    if (!window.QRCode) {
+      qrLib = qrLib || new Promise((res, rej) => {
+        const s = h('script', { src: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js' });
+        s.onload = res; s.onerror = rej; document.head.append(s);
+      });
+      await withTimeout(qrLib, 8000);
+    }
+    box.replaceChildren();
+    new window.QRCode(box, { text, width: 220, height: 220, correctLevel: window.QRCode.CorrectLevel.M });
+  } catch {
+    box.replaceChildren(h('div', { class: 'small muted' }, 'QR-koden kunde inte skapas här.'));
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
