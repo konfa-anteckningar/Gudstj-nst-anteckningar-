@@ -150,6 +150,17 @@
   .acc-row{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
   .acc-row .who{flex:1;min-width:160px}
   .acc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .boxes{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:340px;margin:18px auto 6px}
+  .box{aspect-ratio:1;min-height:44px;border:2px solid var(--line);border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:15px;color:#b3ad9f;background:#fff}
+  .box.on{background:var(--accent);border-color:var(--accent);color:#fff;font-size:22px}
+  .home-stat{font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1;margin-top:6px}
+  .home-stat span{font-size:22px;color:var(--muted);font-weight:600}
+  .home-actions{display:grid;gap:10px;margin-top:20px}
+  .prog{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .prog .bar{flex:1;max-width:220px}
+  .tag.done{background:var(--accent);color:#fff}
+  .nav a{padding:9px 4px}
+  .caps{color:var(--danger);font-size:13px;font-weight:600;margin-top:6px}
   .pw-wrap{position:relative}
   .pw-wrap input{padding-right:72px}
   .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;
@@ -270,6 +281,18 @@ function pwField(input) {
   });
   return h('div', { class: 'pw-wrap' }, input, btn);
 }
+function errText(e) {
+  const c = e?.code || '', m = String(e?.message || e || '');
+  if (c === 'permission-denied' || /permission/i.test(m)) return 'Databasen nekade åtkomst. Kontrollera att reglerna är publicerade under Firestore → Rules (README, steg 4).';
+  if (/offline|unavailable|timeout|network/i.test(c + ' ' + m)) return 'Ingen kontakt med databasen. Kontrollera internetanslutningen. Har du en annonsblockerare kan den behöva stängas av för sidan.';
+  if (/not-found|NOT_FOUND|does not exist/i.test(c + ' ' + m)) return 'Databasen hittades inte. Kontrollera att Firestore Database är skapad i Firebase (inte bara Realtime Database).';
+  if (/failed-precondition|Datastore/i.test(c + ' ' + m)) return 'Databasen är skapad i fel läge. Kontrollera att det är Firestore Database (Native mode).';
+  return 'Något gick fel. Försök igen om en stund.';
+}
+const failCard = (title, e) => msgCard('📡', title, errText(e),
+  h('div', { class: 'row', style: 'justify-content:center;margin-top:16px' },
+    h('button', { class: 'btn primary', onclick: () => route() }, 'Försök igen')),
+  h('p', { class: 'small muted', style: 'margin:14px 0 0;word-break:break-word' }, 'Felkod: ', String(e?.code || '–'), ' · ', String(e?.message || e || '').slice(0, 300)));
 const loadingCard = text => h('div', { class: 'card center' }, h('div', { class: 'spin' }), h('div', { class: 'muted' }, text));
 const msgCard = (emoji, title, text, ...extra) => h('div', { class: 'card center' },
   h('div', { class: 'big-emoji' }, emoji), h('h1', { style: 'font-size:22px' }, title), text && h('p', { class: 'lead' }, text), ...extra);
@@ -298,6 +321,7 @@ function normalizeSurvey(s) {
     title: String(s.title || ''),
     description: String(s.description || ''),
     open: s.open !== false,
+    goal: Number.isInteger(Number(s.goal)) && Number(s.goal) >= 1 && Number(s.goal) <= 100 ? Number(s.goal) : 10,
     questions: (Array.isArray(s.questions) ? s.questions : []).map(normalizeQuestion),
   };
 }
@@ -309,6 +333,7 @@ function churchTemplate() {
     title: 'Mina gudstjänstanteckningar',
     description: 'Fyll i under eller efter gudstjänsten. Allt sparas på ditt konto, så du kan läsa det igen under "Mina svar".',
     open: true,
+    goal: 10,
     questions: [
       { id: 'datum', type: 'date', text: 'Datum' },
       { id: 'plats', type: 'short', text: 'Plats' },
@@ -397,11 +422,13 @@ function demoBackend() {
     async saveSurvey(s) { admin(); write(K.s, s); },
 
     watchMine(username, cb) { const f = () => cb(resp().filter(r => r.username === username)); subs.r.add(f); setTimeout(f); return () => subs.r.delete(f); },
-    async addResponse(username, answers, fragor) {
+    async addResponse(id, username, answers, fragor) {
+      if (window.__demoSlow) await new Promise(r => setTimeout(r, window.__demoSlow));
       if (active() !== username) throw fail('permission-denied');
       if (read(K.s, {}).open === false) throw fail('permission-denied');
       const all = read(K.r, []); const t = new Date().toISOString();
-      all.push({ id: uid(), username, answers, fragor, createdAt: t, updatedAt: t }); write(K.r, all); emit();
+      if (all.some(x => x.id === id)) return;
+      all.push({ id, username, answers, fragor, createdAt: t, updatedAt: t }); write(K.r, all); emit();
     },
     async updateResponse(id, answers) {
       const me = active(); const all = read(K.r, []); const r = all.find(x => x.id === id);
@@ -493,8 +520,9 @@ async function firebaseBackend(cfg) {
     watchMine(username, cb, err) {
       return F.onSnapshot(F.query(respCol, F.where('username', '==', username)), snap => cb(snap.docs.map(toResp)), err);
     },
-    async addResponse(username, answers, fragor) {
-      await F.addDoc(respCol, { username, answers, fragor, createdAt: ts(), updatedAt: ts() });
+    async addResponse(id, username, answers, fragor) {
+      // Fast id per ifyllnad: blir det glapp i nätet och man trycker igen skapas inga dubbletter
+      await F.setDoc(F.doc(db, 'responses', id), { username, answers, fragor, createdAt: ts(), updatedAt: ts() });
     },
     async updateResponse(id, answers) { await F.updateDoc(F.doc(db, 'responses', id), { answers, updatedAt: ts() }); },
     async deleteResponse(id) { await F.deleteDoc(F.doc(db, 'responses', id)); },
@@ -582,12 +610,19 @@ function userNav() {
   if (!S.user || S.user.disabled) return null;
   const p = page();
   const link = (hash, label, key) => h('a', { href: hash, class: p === key ? 'on' : '',
-    onclick: () => { if (key === 'start' && p === 'start' && S.editing) { S.editing = null; route(); } } }, label);
+    onclick: async e => {
+      if (key === 'skriv' && p === 'skriv' && S.editing) {
+        e.preventDefault();
+        if (S.leaveGuard && S.leaveGuard() && !(await confirmDialog('Lämna utan att spara?', 'Du har ändrat i svaret. Ändringarna sparas inte om du lämnar nu.', 'Lämna', true))) return;
+        S.editing = null; route();
+      }
+    } }, label);
   return [
     h('div', { class: 'hello' }, 'Inloggad som ', h('b', { style: 'color:var(--ink)' }, S.user.name || S.user.username),
       S.admin && h('span', { class: 'tag admin' }, 'Admin')),
     h('nav', { class: 'nav' },
-      link('#', 'Nytt svar', 'start'),
+      link('#', 'Hem', 'start'),
+      link('#skriv', 'Skriv', 'skriv'),
       link('#mina', 'Mina svar', 'mina'),
       S.admin && link('#admin', 'Admin', 'admin'),
       link('#konto', 'Konto', 'konto')),
@@ -603,14 +638,26 @@ async function boot() {
     setPage(msgCard('⚠️', 'Kunde inte ansluta', 'Firebase gick inte att ladda. Kontrollera internetanslutningen och att FIREBASE_CONFIG i index.html är rätt ifylld.'));
     return;
   }
-  addEventListener('hashchange', route);
+  let skipNext = false;
+  addEventListener('hashchange', async () => {
+    if (skipNext) { skipNext = false; return; }
+    if (S.leaveGuard && S.leaveGuard()) {
+      const target = location.hash || '#';
+      skipNext = true; location.hash = '#skriv';
+      if (!(await confirmDialog('Lämna utan att spara?', 'Du har ändrat i svaret. Ändringarna sparas inte om du lämnar sidan nu.', 'Lämna', true))) return;
+      S.leaveGuard = null; location.hash = target;
+      return;
+    }
+    route();
+  });
+  addEventListener('beforeunload', e => { if (S.leaveGuard && S.leaveGuard()) { e.preventDefault(); e.returnValue = ''; } });
   let last;
   backend.onAuth(async u => {
     const key = u ? u.username : null;
     if (key === last && S.ready) return;
     last = key;
     runAll(sessionCleanups);
-    S.user = null; S.admin = false; S.mine = []; S.mineLoaded = false; S.mineErr = null; S.editing = null;
+    S.user = null; S.admin = false; S.mine = []; S.mineLoaded = false; S.mineErr = null; S.editing = null; S.survey = null; S.surveyExists = undefined;
     if (u) {
       setPage(loadingCard('Loggar in…'));
       try {
@@ -620,17 +667,15 @@ async function boot() {
         S.admin = !S.user.disabled && isRootAdmin(u.username);
       } catch (e) {
         console.error(e);
-        setPage(msgCard('📡', 'Kunde inte logga in', e?.code === 'permission-denied'
-            ? 'Databasen nekade åtkomst. Kontrollera att firestore.rules är publicerade och att admin-namnet stämmer (README, steg 4).'
-            : 'Kontrollera internetanslutningen och ladda om sidan.',
-          h('button', { class: 'btn', style: 'margin-top:16px', onclick: logout }, 'Logga ut')));
+        setPage(failCard('Kunde inte logga in', e),
+          h('div', { class: 'center' }, h('button', { class: 'btn', onclick: logout }, 'Logga ut')));
         return;
       }
       if (!S.user.disabled) {
         const off = backend.watchMine(u.username, list => {
           S.mine = list.sort((a, b) => b.createdAt - a.createdAt); S.mineLoaded = true; S.mineErr = null;
-          if (page() === 'mina') showMine();
-        }, err => { console.error(err); S.mineErr = err; S.mineLoaded = true; if (page() === 'mina') showMine(); });
+          if (page() === 'mina') showMine(); else if (page() === 'start') showHome(true);
+        }, err => { console.error(err); S.mineErr = err; S.mineLoaded = true; if (page() === 'mina') showMine(); else if (page() === 'start') showHome(true); });
         sessionCleanups.push(off);
       }
     }
@@ -647,16 +692,18 @@ function logout() {
 
 function route() {
   if (!S.ready) return;
+  S.leaveGuard = null;
   runAll(routeCleanups);
   routeToken++;
   const p = page();
-  if (p !== 'start') S.editing = null;
+  if (p !== 'skriv') S.editing = null;
   if (!S.user) { showAuth(); return; }
   if (S.user.disabled) { showBlocked(); return; }
   if (p === 'mina') showMine();
   else if (p === 'konto') showAccount();
   else if (p === 'admin' && S.admin) showAdmin();
-  else showForm();
+  else if (p === 'skriv' || p === 'admin') showForm();
+  else showHome();
 }
 
 /* =====================================================================
@@ -664,24 +711,39 @@ function route() {
    ===================================================================== */
 function showAuth() {
   document.title = 'Logga in';
-  const user = h('input', { type: 'text', id: 'a_user', autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', maxlength: 20 });
+  const user = h('input', { type: 'text', id: 'a_user', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', maxlength: 40 });
   const pw = h('input', { type: 'password', id: 'a_pw', autocomplete: 'current-password' });
+  const caps = h('div', { class: 'caps', hidden: true }, '⇪ Caps Lock är på – lösenordet skrivs med stora bokstäver');
+  const checkCaps = e => { try { caps.hidden = !e.getModifierState('CapsLock'); } catch {} };
+  pw.addEventListener('keydown', checkCaps); pw.addEventListener('keyup', checkCaps);
   const err = h('div', { class: 'error-box', hidden: true });
   const btn = h('button', { class: 'btn primary block', type: 'submit' }, 'Logga in');
   const showErr = t => { err.textContent = t; err.hidden = false; };
   const form = h('form', { class: 'card', style: 'max-width:440px;margin:24px auto', novalidate: true, onsubmit: async e => {
     e.preventDefault(); err.hidden = true;
-    const u = user.value.trim().toLowerCase();
-    if (!u || !pw.value) return showErr('Skriv användarnamn och lösenord.');
-    if (!USERNAME_RE.test(u)) return showErr('Fel användarnamn eller lösenord.');
+    // Förlåtande: versaler, mellanslag runt om, å/ä/ö och mellanslag mitt i ("elin s" → "elin.s")
+    const u = user.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '.');
+    const p1 = pw.value.trim();
+    if (!u || !p1) return showErr('Skriv både användarnamn och lösenord.');
+    const hint = ' Tänk på stora och små bokstäver. Ä får du genom att hålla inne A på mobilen.';
+    if (!USERNAME_RE.test(u)) return showErr('Fel användarnamn eller lösenord.' + hint);
     btn.disabled = true; btn.textContent = 'Loggar in…';
-    try { await withTimeout(backend.login(u, pw.value), 15000); }
-    catch (ex) { console.error(ex); btn.disabled = false; btn.textContent = 'Logga in'; showErr(authError(ex)); }
+    try { await withTimeout(backend.login(u, p1), 15000); }
+    catch (ex) {
+      // Ett andra försök om lösenordet följer mönstret men är felskrivet (t.ex. "jesusalskar.elin")
+      const m = /^jesus\s*[aä]lskar\s*[.,]?\s*(.+)$/i.exec(p1);
+      const p2 = m && ('JesusÄlskar.' + m[1].toLowerCase().split('-').map(x => x.charAt(0).toUpperCase() + x.slice(1)).join('-'));
+      if (/invalid-credential|wrong-password/.test(ex?.code || ex?.message || '') && p2 && p2 !== p1) {
+        try { await withTimeout(backend.login(u, p2), 15000); return; } catch (ex2) { ex = ex2; }
+      }
+      console.error(ex); btn.disabled = false; btn.textContent = 'Logga in';
+      showErr(authError(ex) + (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(ex?.code || ex?.message || '') ? hint : ''));
+    }
   } },
     h('h1', { style: 'font-size:24px' }, 'Logga in'),
     h('p', { class: 'lead' }, 'Logga in för att skriva och läsa dina anteckningar.'),
     h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'a_user' }, 'Användarnamn'), user),
-    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'a_pw' }, 'Lösenord'), pwField(pw)),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'a_pw' }, 'Lösenord'), pwField(pw), caps),
     h('div', { style: 'margin-top:22px' }, btn, err),
     h('p', { class: 'center small muted', style: 'margin:18px 0 0' }, 'Inget konto, eller glömt lösenordet? Fråga den som ansvarar för sidan.'));
   setPage(form);
@@ -736,8 +798,8 @@ async function showForm() {
     if (!survey.questions.length) { const cur = await backend.getSurvey().catch(() => null); survey.questions = normalizeSurvey(cur).questions; }
   } else {
     setPage(loadingCard('Laddar formuläret…'));
-    try { survey = await withTimeout(backend.getSurvey()); }
-    catch (e) { console.error(e); if (tok === routeToken) setPage(msgCard('📡', 'Kunde inte ladda', 'Kontrollera internetanslutningen och ladda om sidan.')); return; }
+    try { survey = await withTimeout(backend.getSurvey(), 20000); }
+    catch (e) { console.error(e); if (tok === routeToken) setPage(failCard('Kunde inte ladda', e)); return; }
     if (tok !== routeToken) return;
     if (!survey) { setPage(msgCard('📝', 'Inga frågor än', S.admin ? 'Skapa frågorna under Admin.' : 'Här kommer det snart frågor att svara på.')); return; }
     survey = normalizeSurvey(survey);
@@ -746,6 +808,7 @@ async function showForm() {
   if (tok !== routeToken) return;
 
   const draftKey = `enkat-utkast-${S.user.username}-${survey.sid}`;
+  const respId = uid() + uid();
   const blocks = survey.questions.map((q, i) => {
     const { input, get, set } = questionInput(q);
     const err = h('div', { class: 'err', hidden: true });
@@ -766,15 +829,35 @@ async function showForm() {
       ls.set(draftKey, JSON.stringify(d));
     }, 400);
   };
-  const form = h('form', { class: 'card', novalidate: true, onsubmit: submit, oninput: saveDraft, onchange: saveDraft },
+  const onEnter = e => {
+    if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+    e.preventDefault(); // Enter i ett kort fält ska inte skicka formuläret
+    const seen = new Set();
+    const list = [...form.querySelectorAll('input, textarea')].filter(el => {
+      if (el.type !== 'radio' && el.type !== 'checkbox') return true;
+      if (seen.has(el.name)) return false; seen.add(el.name); return true;
+    });
+    const cur = (e.target.type === 'radio' || e.target.type === 'checkbox') ? list.find(x => x.name === e.target.name) : e.target;
+    const next = list[list.indexOf(cur) + 1];
+    if (next && next !== e.target) next.focus(); else e.target.blur();
+  };
+  const form = h('form', { class: 'card', novalidate: true, onsubmit: submit, oninput: saveDraft, onchange: saveDraft, onkeydown: onEnter },
     h('h1', {}, survey.title || 'Formulär'),
     survey.description && h('p', { class: 'lead' }, survey.description),
     blocks.map(b => b.el),
     h('div', { style: 'margin-top:24px' }, btn, formErr,
-      editing ? h('button', { type: 'button', class: 'btn ghost block', style: 'margin-top:8px', onclick: () => { S.editing = null; location.hash = '#mina'; } }, 'Avbryt')
+      editing ? h('button', { type: 'button', class: 'btn ghost block', style: 'margin-top:8px', onclick: () => { location.hash = '#mina'; } }, 'Avbryt')
         : h('p', { class: 'small muted center', style: 'margin:10px 0 0' }, 'Det du skriver sparas som utkast på den här enheten tills du sparar.')),
     blocks.some(b => b.q.required) && h('p', { class: 'small muted center', style: 'margin:12px 0 0' }, h('span', { class: 'req' }, '*'), ' = måste besvaras'));
   setPage(form);
+  if (editing) {
+    const startJson = JSON.stringify(editing.answers || {});
+    S.leaveGuard = () => {
+      const now = {}; blocks.forEach(b => { const v = b.get(); if (!isEmpty(v)) now[b.q.id] = v; });
+      const orig = {}; blocks.forEach(b => { const v = (editing.answers || {})[b.q.id]; if (!isEmpty(v)) orig[b.q.id] = v; });
+      return JSON.stringify(now) !== JSON.stringify(orig);
+    };
+  }
 
   // Fyll i utkast eller befintligt svar
   try {
@@ -798,30 +881,78 @@ async function showForm() {
     if (!blocks.some(b => b.q.type !== 'date' && !isEmpty(answers[b.q.id]))) { formErr.hidden = false; formErr.textContent = 'Skriv något innan du sparar.'; return; }
     btn.disabled = true; btn.textContent = 'Sparar…';
     clearTimeout(draftTimer);
+    // Ingen tidsgräns: utan internet väntar Firebase och skickar så fort det finns kontakt igen
+    const slowTimer = setTimeout(() => {
+      btn.textContent = 'Väntar på internet…';
+      formErr.hidden = false; formErr.className = 'notice'; formErr.style.marginTop = '12px';
+      formErr.textContent = 'Det tar längre tid än vanligt. Svaret skickas automatiskt så fort du har internet – stäng inte sidan. Det du skrivit finns kvar på enheten.';
+    }, 8000);
     try {
       if (editing) {
         // Behåll svar på frågor som inte visades (om något saknas i formuläret)
         const merged = { ...answers };
         for (const [k, v] of Object.entries(editing.answers || {})) if (!blocks.some(b => b.q.id === k)) merged[k] = v;
-        await withTimeout(backend.updateResponse(editing.id, merged), 15000);
+        await backend.updateResponse(editing.id, merged);
+        clearTimeout(slowTimer); S.leaveGuard = null;
         S.editing = null; toast('Ändringarna är sparade'); location.hash = '#mina';
       } else {
-        await withTimeout(backend.addResponse(S.user.username, answers, survey.questions), 15000);
+        await backend.addResponse(respId, S.user.username, answers, survey.questions);
+        clearTimeout(slowTimer);
         ls.del(draftKey);
-        setPage(msgCard('🙌', 'Sparat!', 'Ditt svar är sparat på ditt konto.',
-          h('div', { class: 'row', style: 'justify-content:center;margin-top:20px' },
-            h('a', { class: 'btn primary', href: '#mina' }, 'Mina svar'),
-            h('button', { class: 'btn', onclick: () => showForm() }, 'Skriv ett nytt'))));
+        S.justSaved = true;
+        toast('Sparat!');
+        if (page() === 'start') route(); else location.hash = '#';
       }
     } catch (err) {
       console.error(err);
+      clearTimeout(slowTimer);
       btn.disabled = false; btn.textContent = label;
-      formErr.hidden = false;
+      formErr.hidden = false; formErr.className = 'error-box';
       formErr.textContent = err?.code === 'permission-denied'
         ? 'Svaret kunde inte sparas. Formuläret kan ha stängts eller kontot spärrats – ladda om sidan.'
         : 'Något gick fel när svaret skulle sparas. Kontrollera internetanslutningen och försök igen. Det du skrivit finns kvar.';
     }
   }
+}
+
+/* =====================================================================
+   STARTSIDA (framsteg mot målet)
+   ===================================================================== */
+async function showHome(fromSnapshot = false) {
+  const tok = routeToken;
+  document.title = 'Start';
+  if (!fromSnapshot || !S.survey) {
+    if (!S.survey) setPage(loadingCard('Laddar…'));
+    try { const sv = await withTimeout(backend.getSurvey(), 20000); S.survey = normalizeSurvey(sv); S.surveyExists = !!sv; }
+    catch (e) { console.error(e); if (!S.survey) { if (tok === routeToken) setPage(failCard('Kunde inte ladda', e)); return; } }
+    if (tok !== routeToken) return;
+  }
+  if (S.mineErr) { setPage(failCard('Kunde inte hämta dina svar', S.mineErr)); return; }
+  if (!S.mineLoaded) { setPage(loadingCard('Hämtar dina svar…')); return; }
+  const sv = S.survey, goal = sv.goal, n = S.mine.length;
+  const done = Math.min(n, goal), left = Math.max(0, goal - n);
+  const justReached = S.justSaved && n === goal;
+  S.justSaved = false;
+  const boxes = h('div', { class: 'boxes', role: 'img', 'aria-label': `${done} av ${goal} klara` },
+    Array.from({ length: goal }, (_, i) => h('span', { class: 'box' + (i < done ? ' on' : '') }, i < done ? '✓' : String(i + 1))));
+  const msg = left > 0
+    ? (n === 0 ? `Fyll i formuläret ${goal} gånger. Varje gång du sparar bockas en ruta av.` : `Du har ${left} kvar. ${left === 1 ? 'Bara en till!' : 'Fortsätt så!'}`)
+    : (n > goal ? `Du har klarat målet och skrivit ${n} gånger – bra jobbat! 🎉` : 'Du har klarat målet – bra jobbat! 🎉');
+  const latest = S.mine[0] ? entryView(S.mine[0]).title : '';
+  setPage(
+    h('div', { class: 'card center' },
+      h('h1', { style: 'font-size:22px' }, `Hej ${S.user.name ? S.user.name.split(/\s+/)[0] : S.user.username}!`),
+      h('div', { class: 'muted small' }, sv.title || 'Gudstjänstanteckningar'),
+      h('div', { class: 'home-stat' }, done, h('span', {}, ` av ${goal}`)),
+      boxes,
+      h('p', { class: 'lead', style: 'margin-top:12px' }, justReached ? 'Grattis, nu har du nått målet! 🎉' : msg),
+      latest && h('p', { class: 'small muted', style: 'margin:6px 0 0' }, `Senaste svar: ${latest}`),
+      h('div', { class: 'home-actions' },
+        sv.open && S.surveyExists !== false
+          ? h('a', { class: 'btn primary block', href: '#skriv' }, n === 0 ? 'Fyll i formuläret' : 'Fyll i formuläret igen')
+          : h('div', { class: 'notice' }, S.surveyExists === false ? 'Det finns inga frågor än.' : 'Formuläret är stängt just nu.'),
+        h('a', { class: 'btn block', href: '#mina' }, `Se mina svar (${n})`),
+        S.admin && h('a', { class: 'btn ghost block', href: '#admin' }, 'Till admin'))));
 }
 
 /* =====================================================================
@@ -843,12 +974,12 @@ function entryView(r, fallbackQs) {
 
 function showMine() {
   document.title = 'Mina svar';
-  if (S.mineErr) { setPage(msgCard('📡', 'Kunde inte hämta dina svar', 'Kontrollera internetanslutningen och ladda om sidan.')); return; }
+  if (S.mineErr) { setPage(failCard('Kunde inte hämta dina svar', S.mineErr)); return; }
   if (!S.mineLoaded) { setPage(loadingCard('Hämtar dina svar…')); return; }
   const list = S.mine;
   if (!list.length) {
     setPage(msgCard('📒', 'Inga sparade svar än', 'När du sparar formuläret hamnar dina svar här, så att du kan läsa dem igen.',
-      h('a', { class: 'btn primary', href: '#', style: 'margin-top:16px' }, 'Skriv ditt första')));
+      h('a', { class: 'btn primary', href: '#skriv', style: 'margin-top:16px' }, 'Skriv ditt första')));
     return;
   }
   const open = new Set([...document.querySelectorAll('details.mine[open]')].map(d => d.dataset.id));
@@ -859,7 +990,7 @@ function showMine() {
       h('dl', { class: 'resp' }, v.items.map(it => [h('dt', {}, it.q), h('dd', {}, it.a)])),
       r.updatedAt && r.createdAt && r.updatedAt - r.createdAt > 60000 && h('div', { class: 'small muted', style: 'margin-top:10px' }, `Ändrat ${fmtTime(r.updatedAt)}`),
       h('div', { class: 'row', style: 'margin-top:16px' },
-        h('button', { class: 'btn sm', onclick: () => { S.editing = r; if (page() === 'start') route(); else location.hash = '#'; } }, '✎ Redigera'),
+        h('button', { class: 'btn sm', onclick: () => { S.editing = r; if (page() === 'skriv') route(); else location.hash = '#skriv'; } }, '✎ Redigera'),
         h('button', { class: 'btn sm', onclick: async () => {
           try { await navigator.clipboard.writeText(v.text()); toast('Kopierat'); } catch { toast('Kunde inte kopiera här'); }
         } }, 'Kopiera text'),
@@ -924,8 +1055,8 @@ async function showAdmin() {
   document.title = 'Admin';
   setPage(loadingCard('Laddar admin…'));
   let survey;
-  try { survey = await withTimeout(backend.getSurvey()); }
-  catch (e) { console.error(e); if (tok === routeToken) setPage(msgCard('📡', 'Kunde inte ladda', 'Kontrollera internetanslutningen och ladda om sidan.')); return; }
+  try { survey = await withTimeout(backend.getSurvey(), 20000); }
+  catch (e) { console.error(e); if (tok === routeToken) setPage(failCard('Kunde inte ladda', e)); return; }
   if (tok !== routeToken) return;
   const cleanups = routeCleanups;
 
@@ -1003,7 +1134,7 @@ async function showAdmin() {
     if (!A.saved) { A.draft.open = next; changed(); toast(next ? 'Öppnas när du sparar' : 'Stängs när du sparar'); return; }
     const s = savedSurvey(); s.open = next;
     statusPill.disabled = true;
-    try { await withTimeout(backend.saveSurvey(s)); A.saved = JSON.stringify(s); A.draft.open = next; toast(next ? 'Formuläret är öppet' : 'Formuläret är stängt'); }
+    try { await withTimeout(backend.saveSurvey(s)); A.saved = JSON.stringify(s); A.draft.open = next; S.survey = clone(s); S.surveyExists = true; toast(next ? 'Formuläret är öppet' : 'Formuläret är stängt'); }
     catch (e) { saveError(e); }
     statusPill.disabled = false; changed();
   }
@@ -1021,7 +1152,7 @@ async function showAdmin() {
     });
     if (problems.length) { await confirmDialog('Kan inte spara än', problems.join(' '), 'OK'); return; }
     saveBtn.disabled = true; saveBtn.textContent = 'Sparar…';
-    try { const clean = normalizeSurvey(d); await withTimeout(backend.saveSurvey(clean)); A.saved = JSON.stringify(clean); A.draft = clone(clean); toast('Sparat'); }
+    try { const clean = normalizeSurvey(d); await withTimeout(backend.saveSurvey(clean)); A.saved = JSON.stringify(clean); A.draft = clone(clean); S.survey = clone(clean); S.surveyExists = true; toast('Sparat'); }
     catch (e) { saveError(e); }
     saveBtn.disabled = false; saveBtn.textContent = 'Spara';
     drawPanel();
@@ -1036,6 +1167,10 @@ async function showAdmin() {
       h('h2', {}, 'Om formuläret'),
       h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'e_title' }, 'Rubrik'),
         h('input', { type: 'text', id: 'e_title', value: d.title, maxlength: 150, oninput: e => { d.title = e.target.value; changed(); } })),
+      h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'e_goal' }, 'Mål: antal svar per deltagare'),
+        h('input', { type: 'number', id: 'e_goal', min: 1, max: 100, inputmode: 'numeric', value: d.goal, style: 'max-width:120px',
+          oninput: e => { const v = parseInt(e.target.value, 10); if (v >= 1 && v <= 100) { d.goal = v; changed(); } } }),
+        h('div', { class: 'small muted', style: 'margin-top:4px' }, 'Visas som avbockningsrutor på deltagarnas startsida.')),
       h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'e_desc' }, 'Beskrivning ', h('span', { class: 'muted', style: 'font-weight:400' }, '(frivilligt)')),
         h('textarea', { id: 'e_desc', value: d.description, maxlength: 2000, style: 'min-height:72px', oninput: e => { d.description = e.target.value; changed(); } })),
       h('p', { class: 'small muted', style: 'margin:12px 0 0' }, 'Ändringar påverkar bara nya svar. Tidigare svar visas med frågorna som gällde när de sparades.'));
@@ -1098,7 +1233,8 @@ async function showAdmin() {
     return h('div', { class: 'card' }, h('h2', {}, 'Kunde inte hämta data'),
       h('p', { class: 'lead' }, A.err?.code === 'permission-denied'
         ? `Kontot @${S.user.username} får inte läsa allas data. Kontrollera att användarnamnet står i firestore.rules och att reglerna är publicerade (README, steg 4).`
-        : 'Kontrollera internetanslutningen och ladda om sidan.'));
+        : errText(A.err)),
+      h('p', { class: 'small muted', style: 'margin:12px 0 0;word-break:break-word' }, 'Felkod: ', String(A.err?.code || '–'), ' · ', String(A.err?.message || '').slice(0, 300)));
   }
   function resultsView() {
     if (A.err) return dataError();
@@ -1306,7 +1442,17 @@ async function showAdmin() {
     const counts = {}, last = {};
     A.responses.forEach(r => { counts[r.username] = (counts[r.username] || 0) + 1; if (!last[r.username] || r.createdAt > last[r.username]) last[r.username] = r.createdAt; });
     const q = A.accSearch.trim().toLowerCase();
-    const list = A.users.filter(u => !q || u.username.includes(q) || (u.name || '').toLowerCase().includes(q));
+    const goal = (savedSurvey() || A.draft).goal || 10;
+    const sorters = {
+      name: (a, b) => (a.name || a.username).localeCompare(b.name || b.username, 'sv'),
+      least: (a, b) => (counts[a.username] || 0) - (counts[b.username] || 0) || sorters.name(a, b),
+      most: (a, b) => (counts[b.username] || 0) - (counts[a.username] || 0) || sorters.name(a, b),
+    };
+    const list = A.users.filter(u => !q || u.username.includes(q) || (u.name || '').toLowerCase().includes(q))
+      .filter(u => A.accShow !== 'todo' || (!isRootAdmin(u.username) && (counts[u.username] || 0) < goal))
+      .sort(sorters[A.accSort || 'name']);
+    const participants = A.users.filter(u => !isRootAdmin(u.username) && !u.disabled);
+    const reached = participants.filter(u => (counts[u.username] || 0) >= goal).length;
     const search = h('input', { type: 'text', placeholder: 'Sök namn eller användarnamn…', value: A.accSearch, 'aria-label': 'Sök konto', 'data-search': '1',
       oninput: e => { A.accSearch = e.target.value; const pos = e.target.selectionStart; drawPanel(); const s = panel.querySelector('[data-search]'); s.focus(); s.setSelectionRange(pos, pos); } });
     const act = async (fn, okMsg) => { try { await fn(); toast(okMsg); } catch (e) { toast(writeErr(e)); } };
@@ -1316,6 +1462,9 @@ async function showAdmin() {
       const root = isRootAdmin(u.username), isAdm = root, me = u.username === S.user.username;
       const n = counts[u.username] || 0;
       const pw = A.creds[u.username];
+      const progress = !root && h('div', { class: 'prog' },
+        h('div', { class: 'bar' }, h('i', { style: `width:${Math.min(100, 100 * n / goal)}%` })),
+        h('b', { class: 'small' }, `${Math.min(n, goal)} av ${goal}`));
       const shown = A.reveal.has(u.username);
       const pwRow = h('div', { class: 'row', style: 'margin-top:10px;gap:6px 10px' },
         h('span', { class: 'small muted' }, 'Lösenord:'),
@@ -1327,9 +1476,11 @@ async function showAdmin() {
           h('b', {}, u.name || '(inget namn)'), ' ',
           isAdm && h('span', { class: 'tag admin' }, 'Admin'), ' ',
           u.disabled && h('span', { class: 'tag blocked' }, 'Spärrad'), ' ',
-          me && h('span', { class: 'tag' }, 'Du'),
+          me && h('span', { class: 'tag' }, 'Du'), ' ',
+          !root && n >= goal && h('span', { class: 'tag done' }, '✓ Klar'),
           h('div', { class: 'small muted' }, 'Användarnamn: ', h('b', { style: 'color:var(--ink)' }, u.username)),
-          h('div', { class: 'small muted' }, `${n} svar`, last[u.username] && ` · senast ${fmtTime(last[u.username])}`)),
+          progress,
+          h('div', { class: 'small muted', style: 'margin-top:4px' }, `${n} svar totalt`, last[u.username] && ` · senast ${fmtTime(last[u.username])}`)),
         pwRow,
         h('div', { class: 'acc-actions' },
           pw && h('button', { class: 'btn sm primary', onclick: () => copy(loginText(u), 'Inloggningen är kopierad – klistra in i ett sms') }, 'Kopiera inloggning'),
@@ -1360,12 +1511,23 @@ async function showAdmin() {
             A.users.some(u => u.disabled) && ` · ${A.users.filter(u => u.disabled).length} spärrade`)),
           h('span', { class: 'spacer' }),
           h('button', { class: 'btn primary', onclick: createAccountDialog }, '+ Skapa konto')),
+        participants.length > 0 && h('div', { style: 'margin:0 0 14px' },
+          h('div', { class: 'bar-top' }, h('span', {}, `Har nått målet (${goal} svar)`), h('b', {}, `${reached} av ${participants.length} deltagare`)),
+          h('div', { class: 'bar' }, h('i', { style: `width:${100 * reached / participants.length}%` }))),
         search,
+        h('div', { class: 'row', style: 'margin-top:10px' },
+          h('select', { 'aria-label': 'Sortera', value: A.accSort || 'name', style: 'flex:1;min-width:150px', onchange: e => { A.accSort = e.target.value; drawPanel(); } },
+            h('option', { value: 'name' }, 'Sortera: namn'),
+            h('option', { value: 'least' }, 'Sortera: minst svar'),
+            h('option', { value: 'most' }, 'Sortera: flest svar')),
+          h('select', { 'aria-label': 'Visa', value: A.accShow || 'all', style: 'flex:1;min-width:150px', onchange: e => { A.accShow = e.target.value; drawPanel(); } },
+            h('option', { value: 'all' }, 'Visa: alla'),
+            h('option', { value: 'todo' }, 'Visa: inte klara'))),
         withPw.length > 1 && h('div', { style: 'margin-top:10px' },
           h('button', { class: 'linkbtn small', onclick: () => copy(
             'Inloggningar – ' + siteUrl() + '\n\n' + withPw.map(u => `${u.name || u.username}\n  Användarnamn: ${u.username}\n  Lösenord: ${A.creds[u.username]}`).join('\n\n'),
             'Alla inloggningar är kopierade') }, 'Kopiera alla inloggningar (för utskrift)'))),
-      !list.length && h('div', { class: 'notice' }, q ? 'Inga konton matchar sökningen.' : 'Inga konton än. Klicka på "Skapa konto".'),
+      !list.length && h('div', { class: 'notice' }, q ? 'Inga konton matchar sökningen.' : A.accShow === 'todo' ? 'Alla deltagare har nått målet! 🎉' : 'Inga konton än. Klicka på "Skapa konto".'),
       cards);
   }
 
